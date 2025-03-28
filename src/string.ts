@@ -13,7 +13,7 @@ export function template(
   str: string,
   variables: Record<string | number, any>,
   fallback?: string | ((key: string) => string),
-): string {
+) {
   return str.replace(/\{(\w+)\}/g, (_, key) => {
     return variables[key] || ((typeof fallback === 'function' ? fallback(key) : fallback) ?? key)
   })
