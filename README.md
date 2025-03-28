@@ -386,7 +386,7 @@ Shorthand function to create an `Ok` result. Use it to wrap a successful value.
 **Type Definition:**
 
 ```ts
-function ok<T>(value: T): Ok<T>
+declare function ok<T>(value: T): Ok<T>
 ```
 
 #### `err`
@@ -396,8 +396,8 @@ Shorthand function to create an `Err` result. Use it to wrap an error value.
 **Type Definition:**
 
 ```ts
-function err<E extends string = string>(err: E): Err<E>
-function err<E = unknown>(err: E): Err<E>
+declare function err<E extends string = string>(err: E): Err<E>
+declare function err<E = unknown>(err: E): Err<E>
 ```
 
 #### `toResult`
@@ -407,8 +407,8 @@ Wraps a function that might throw an error and returns a `Result` with the resul
 **Type Definition:**
 
 ```ts
-function toResult<T, E = unknown>(fn: () => T): Result<T, E>
-function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
+declare function toResult<T, E = unknown>(fn: () => T): Result<T, E>
+declare function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
 ```
 
 #### `unwrapResult`
@@ -425,9 +425,9 @@ const { value, error } = unwrapResult(result)
 **Type Definition:**
 
 ```ts
-function unwrapResult<T>(result: Ok<T>): { value: T, error: undefined }
-function unwrapResult<E>(result: Err<E>): { value: undefined, error: E }
-function unwrapResult<T, E>(result: Result<T, E>): { value: T, error: undefined } | { value: undefined, error: E }
+declare function unwrapResult<T>(result: Ok<T>): { value: T, error: undefined }
+declare function unwrapResult<E>(result: Err<E>): { value: undefined, error: E }
+declare function unwrapResult<T, E>(result: Result<T, E>): { value: T, error: undefined } | { value: undefined, error: E }
 ```
 
 #### `tryCatch`
@@ -449,8 +449,8 @@ const { value, error } = await tryCatch(fetch('https://api.example.com/data').th
 **Type Definition:**
 
 ```ts
-function tryCatch<T, E = unknown>(fn: () => T): { value: T, error: undefined } | { value: undefined, error: E }
-function tryCatch<T, E = unknown>(promise: Promise<T>): Promise<{ value: T, error: undefined } | { value: undefined, error: E }>
+declare function tryCatch<T, E = unknown>(fn: () => T): { value: T, error: undefined } | { value: undefined, error: E }
+declare function tryCatch<T, E = unknown>(promise: Promise<T>): Promise<{ value: T, error: undefined } | { value: undefined, error: E }>
 ```
 
 ### String
