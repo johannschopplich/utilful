@@ -122,7 +122,9 @@ describe('result', () => {
 
     it('returns unwrapped error for failed operations', () => {
       const error = new Error('test')
-      const result = tryCatch<never, Error>(() => { throw error })
+      const result = tryCatch<never, Error>(() => {
+        throw error
+      })
       expect(result).toEqual({ value: undefined, error })
       expectTypeOf(result).toMatchTypeOf<ResultData<never, Error>>()
     })
