@@ -10,10 +10,10 @@ A collection of TypeScript utilities that I use across my projects.
   - [CSV](#csv)
   - [Emitter](#emitter)
   - [JSON](#json)
-  - [Lazy](#lazy)
   - [Module](#module)
   - [Object](#object)
   - [Path](#path)
+  - [Result](#result)
   - [String](#string)
 
 ## Installation
@@ -168,29 +168,6 @@ Clones the given JSON value.
 declare function cloneJSON<T>(value: T): T
 ```
 
-### Lazy
-
-A simple general purpose memoizer utility.
-
-- Lazily computes a value when accessed
-- Auto-caches the result by overwriting the getter
-- Typesafe
-
-Useful for deferring initialization or expensive operations. Unlike a simple getter, there is no runtime overhead after the first invokation, since the getter itself is overwritten with the memoized value.
-
-```ts
-declare function lazy<T>(getter: () => T): { value: T }
-```
-
-**Example:**
-
-```ts
-const myValue = lazy(() => 'Hello, World!')
-console.log(myValue.value) // Computes value, overwrites getter
-console.log(myValue.value) // Returns cached value
-console.log(myValue.value) // Returns cached value
-```
-
 ### Module
 
 #### `interopDefault`
@@ -214,6 +191,28 @@ async function loadModule() {
 ```
 
 ### Object
+
+#### `memoize`
+
+A simple general purpose memoizer utility.
+
+- Lazily computes a value when accessed
+- Auto-caches the result by overwriting the getter
+
+Useful for deferring initialization or expensive operations. Unlike a simple getter, there is no runtime overhead after the first invokation, since the getter itself is overwritten with the memoized value.
+
+```ts
+declare function memoize<T>(getter: () => T): { value: T }
+```
+
+**Example:**
+
+```ts
+const myValue = lazy(() => 'Hello, World!')
+console.log(myValue.value) // Computes value, overwrites getter
+console.log(myValue.value) // Returns cached value
+console.log(myValue.value) // Returns cached value
+```
 
 #### `objectKeys`
 
@@ -325,6 +324,133 @@ const url = withQuery('https://example.com', {
   // Object values are stringified
   baz: { qux: 'quux' }
 })
+```
+
+### Result
+
+The `Result` type that represents either success (`Ok`) or failure (`Err`). It helps to handle errors in a more explicit and type-safe way, without relying on exceptions.
+
+A common use case for `Result` is error handling in functions that might fail. Here's an example of a function that divides two numbers and returns a `Result`:
+
+```ts
+import { err, ok } from 'utilful'
+
+function divide(a: number, b: number) {
+  if (b === 0) {
+    return err('Division by zero')
+  }
+  return ok(a / b)
+}
+
+const result = divide(10, 2)
+if (result.ok)
+  console.log('Result:', result.value)
+else
+  console.error('Error:', result.error)
+```
+
+#### `Result`
+
+The `Result` type represents either success (`Ok`) or failure (`Err`).
+
+**Type Definition:**
+
+```ts
+type Result<T, E> = Ok<T> | Err<E>
+```
+
+#### `Ok`
+
+The `Ok` type wraps a successful value.
+
+**Example:**
+
+```ts
+const result = new Ok(42)
+```
+
+#### `Err`
+
+The `Err` type wraps an error value.
+
+**Example:**
+
+```ts
+const result = new Err('Something went wrong')
+```
+
+#### `ok`
+
+Shorthand function to create an `Ok` result. Use it to wrap a successful value.
+
+**Type Definition:**
+
+```ts
+function ok<T>(value: T): Ok<T>
+```
+
+#### `err`
+
+Shorthand function to create an `Err` result. Use it to wrap an error value.
+
+**Type Definition:**
+
+```ts
+function err<E extends string = string>(err: E): Err<E>
+function err<E = unknown>(err: E): Err<E>
+```
+
+#### `toResult`
+
+Wraps a function that might throw an error and returns a `Result` with the result of the function.
+
+**Type Definition:**
+
+```ts
+function toResult<T, E = unknown>(fn: () => T): Result<T, E>
+function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
+```
+
+#### `unwrapResult`
+
+Unwraps a `Result`, `Ok`, or `Err` value and returns the value or error in an object. If the result is an `Ok`, the object contains the value and an `undefined` error. If the result is an `Err`, the object contains an `undefined` value and the error.
+
+**Example:**
+
+```ts
+const result = toResult(() => JSON.parse('{"foo":"bar"}'))
+const { value, error } = unwrapResult(result)
+```
+
+**Type Definition:**
+
+```ts
+function unwrapResult<T>(result: Ok<T>): { value: T, error: undefined }
+function unwrapResult<E>(result: Err<E>): { value: undefined, error: E }
+function unwrapResult<T, E>(result: Result<T, E>): { value: T, error: undefined } | { value: undefined, error: E }
+```
+
+#### `tryCatch`
+
+A simpler alternative to `toResult` + `unwrapResult`. It executes a function that might throw an error and directly returns the result in a `ResultData` format. Works with both synchronous functions and promises.
+
+**Example:**
+
+```ts
+import { tryCatch } from 'utilful'
+
+// Synchronous usage
+const { value, error } = tryCatch(() => JSON.parse('{"foo":"bar"}'))
+
+// Asynchronous usage
+const { value, error } = await tryCatch(fetch('https://api.example.com/data').then(r => r.json()))
+```
+
+**Type Definition:**
+
+```ts
+function tryCatch<T, E = unknown>(fn: () => T): { value: T, error: undefined } | { value: undefined, error: E }
+function tryCatch<T, E = unknown>(promise: Promise<T>): Promise<{ value: T, error: undefined } | { value: undefined, error: E }>
 ```
 
 ### String

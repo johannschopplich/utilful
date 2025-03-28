@@ -36,10 +36,6 @@
       "types": "./dist/json.d.mts",
       "default": "./dist/json.mjs"
     },
-    "./lazy": {
-      "types": "./dist/lazy.d.mts",
-      "default": "./dist/lazy.mjs"
-    },
     "./module": {
       "types": "./dist/module.d.mts",
       "default": "./dist/module.mjs"
@@ -51,6 +47,10 @@
     "./path": {
       "types": "./dist/path.d.mts",
       "default": "./dist/path.mjs"
+    },
+    "./result": {
+      "types": "./dist/result.d.mts",
+      "default": "./dist/result.mjs"
     },
     "./string": {
       "types": "./dist/string.d.mts",
