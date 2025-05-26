@@ -2,7 +2,7 @@
   "name": "utilful",
   "type": "module",
   "version": "2.0.0",
-  "packageManager": "pnpm@10.5.2",
+  "packageManager": "pnpm@10.11.0",
   "description": "A collection of TypeScript utilities",
   "author": "Johann Schopplich <hello@johannschopplich.com>",
   "license": "MIT",
@@ -66,7 +66,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "unbuild",
+    "build": "tsdown",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest",
@@ -74,17 +74,18 @@
     "release": "bumpp"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^4.3.0",
-    "@types/node": "^22.13.5",
-    "bumpp": "^10.0.3",
-    "eslint": "^9.21.0",
-    "typescript": "^5.7.3",
-    "unbuild": "^3.5.0",
-    "vitest": "^3.0.7"
+    "@antfu/eslint-config": "^4.13.2",
+    "@types/node": "^22.15.21",
+    "bumpp": "^10.1.1",
+    "eslint": "^9.27.0",
+    "tsdown": "^0.12.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "esbuild",
+      "unrs-resolver"
     ]
   }
 }

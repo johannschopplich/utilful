@@ -13,7 +13,7 @@ export function template(
   str: string,
   variables: Record<string | number, any>,
   fallback?: string | ((key: string) => string),
-) {
+): string {
   return str.replace(/\{(\w+)\}/g, (_, key) => {
     return variables[key] || ((typeof fallback === 'function' ? fallback(key) : fallback) ?? key)
   })
@@ -25,7 +25,7 @@ export function template(
  * @remarks Ported from `nanoid`.
  * @see https://github.com/ai/nanoid
  */
-export function generateRandomId(size = 16, dict = URL_ALPHABET) {
+export function generateRandomId(size: number = 16, dict: string = URL_ALPHABET): string {
   let id = ''
   // A compact alternative for `for (var i = 0; i < step; i++)`.
   let i = size

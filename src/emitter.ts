@@ -60,7 +60,7 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
       type: Key,
       /** Function to call in response to given event */
       handler: GenericEventHandler,
-    ) {
+    ): void {
       const handlers: GenericEventHandler[] | undefined = events.get(type)
 
       if (handlers) {
@@ -84,7 +84,7 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
       type: Key,
       /** Handler function to remove */
       handler?: GenericEventHandler,
-    ) {
+    ): void {
       const handlers: GenericEventHandler[] | undefined = events.get(type)
 
       if (handlers) {
@@ -111,7 +111,7 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
       type: Key,
       /** Any value (object is recommended and powerful), passed to each handler */
       evt?: Events[Key],
-    ) {
+    ): void {
       let handlers = events.get(type)
       if (handlers) {
         for (const handler of [...(handlers as EventHandlerList<Events[keyof Events]>)])

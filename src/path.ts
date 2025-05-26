@@ -120,7 +120,7 @@ export function withoutBase(input = '', base = ''): string {
  */
 export function getPathname(path = '/'): string {
   return path.startsWith('/')
-    ? path.split('?')[0]
+    ? path.split('?')[0]!
     : new URL(path, 'http://localhost').pathname
 }
 

@@ -25,14 +25,14 @@ export function memoize<T>(getter: () => T): { value: T } {
 /**
  * Strictly typed `Object.keys`.
  */
-export function objectKeys<T extends Record<any, any>>(obj: T) {
+export function objectKeys<T extends Record<any, any>>(obj: T): Array<`${keyof T & (string | number | boolean | null | undefined)}`> {
   return Object.keys(obj) as Array<`${keyof T & (string | number | boolean | null | undefined)}`>
 }
 
 /**
  * Strictly typed `Object.entries`.
  */
-export function objectEntries<T extends Record<any, any>>(obj: T) {
+export function objectEntries<T extends Record<any, any>>(obj: T): Array<[keyof T, T[keyof T]]> {
   return Object.entries(obj) as Array<[keyof T, T[keyof T]]>
 }
 
@@ -42,7 +42,7 @@ export function objectEntries<T extends Record<any, any>>(obj: T) {
 export function deepApply<T extends Record<any, any>>(
   data: T,
   callback: (item: T, key: keyof T, value: T[keyof T]) => void,
-) {
+): void {
   for (const [key, value] of Object.entries(data)) {
     callback(data, key, value)
 

@@ -29,7 +29,7 @@ export function createCSV<T extends Record<string, unknown>>(
     /** @default false */
     quoteAll?: boolean
   } = {},
-) {
+): string {
   const {
     delimiter = ',',
     addHeader = true,
@@ -70,7 +70,7 @@ export function escapeCSVValue(
     /** @default false */
     quoteAll?: boolean
   } = {},
-) {
+): string {
   const {
     delimiter = ',',
     quoteAll = false,
@@ -117,7 +117,7 @@ export function parseCSV<Header extends string>(
     /** @default true */
     trimValues?: boolean
   } = {},
-) {
+): CSVRow<Header>[] {
   if (!csv?.trim())
     return []
 
@@ -177,7 +177,7 @@ export function parseCSV<Header extends string>(
   if (rows.length <= 1)
     return []
 
-  const headers = rows[0]
+  const headers = rows[0]!
 
   return rows.slice(1)
     .filter(row => row.some(field => field.trim().length > 0)) // Skip empty rows
