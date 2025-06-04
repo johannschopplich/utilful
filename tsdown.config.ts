@@ -6,6 +6,7 @@ const config: UserConfig | UserConfigFn = defineConfig({
     'src/index.ts',
     'src/array.ts',
     'src/csv.ts',
+    'src/defu.ts',
     'src/emitter.ts',
     'src/json.ts',
     'src/module.ts',
