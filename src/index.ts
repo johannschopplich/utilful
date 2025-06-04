@@ -1,5 +1,6 @@
 export * from './array'
 export * from './csv'
+export * from './defu'
 export * from './emitter'
 export * from './json'
 export * from './module'

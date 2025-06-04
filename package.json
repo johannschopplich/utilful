@@ -28,9 +28,13 @@
       "types": "./dist/csv.d.mts",
       "default": "./dist/csv.mjs"
     },
+    "./defu": {
+      "types": "./dist/defu.d.mts",
+      "default": "./dist/defu.mjs"
+    },
     "./emitter": {
-      "types": "./dist/csv.d.mts",
-      "default": "./dist/csv.mjs"
+      "types": "./dist/emitter.d.mts",
+      "default": "./dist/emitter.mjs"
     },
     "./json": {
       "types": "./dist/json.d.mts",

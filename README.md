@@ -8,6 +8,7 @@ A collection of TypeScript utilities that I use across my projects.
 - [API](#api)
   - [Array](#array)
   - [CSV](#csv)
+  - [Defu](#defu)
   - [Emitter](#emitter)
   - [JSON](#json)
   - [Module](#module)
@@ -109,6 +110,95 @@ John,30
 Jane,25`
 
 const data = parseCSV<'name' | 'age'>(csv) // [{ name: 'John', age: '30' }, { name: 'Jane', age: '25' }]
+```
+
+### Defu
+
+Recursively assign default properties. Simplified version based on [unjs/defu](https://github.com/unjs/defu).
+
+#### `defu`
+
+Recursively assigns missing properties from defaults to the source object. The source object takes precedence over defaults.
+
+**Key Features:**
+
+- **Null/undefined handling**: `null` and `undefined` values in source are replaced with defaults
+- **Array concatenation**: Arrays are concatenated (source + defaults)
+- **Deep merging**: Nested objects are recursively merged
+- **Type safety**: Preserves TypeScript types
+- **Prototype pollution protection**: Ignores `__proto__` and `constructor` keys
+
+```ts
+type PlainObject = Record<PropertyKey, any>
+
+declare function defu<T extends PlainObject>(
+  source: T,
+  ...defaults: PlainObject[]
+): T
+```
+
+**Example:**
+
+```ts
+import { defu } from 'utilful'
+
+const result = defu(
+  { a: 1, b: { x: 1 } },
+  { a: 2, b: { y: 2 }, c: 3 }
+)
+// Result: { a: 1, b: { x: 1, y: 2 }, c: 3 }
+```
+
+**Array concatenation example:**
+
+```ts
+const result = defu(
+  { items: ['a', 'b'] },
+  { items: ['c', 'd'] }
+)
+// Result: { items: ['a', 'b', 'c', 'd'] }
+```
+
+**Null/undefined handling:**
+
+```ts
+const result = defu(
+  { name: null, age: undefined },
+  { name: 'John', age: 30, city: 'NYC' }
+)
+// Result: { name: 'John', age: 30, city: 'NYC' }
+```
+
+#### `createDefu`
+
+Creates a custom defu function with a custom merger.
+
+```ts
+type DefuMerger<T extends PlainObject = PlainObject> = (
+  target: T,
+  key: PropertyKey,
+  value: any,
+  namespace: string,
+) => boolean | void
+
+declare function createDefu(merger?: DefuMerger): DefuFn
+```
+
+**Example:**
+
+```ts
+import { createDefu } from 'utilful'
+
+// Custom merger that adds numbers instead of replacing them
+const addNumbers = createDefu((obj, key, val) => {
+  if (typeof val === 'number' && typeof obj[key] === 'number') {
+    obj[key] += val
+    return true // Indicates the merger handled this property
+  }
+})
+
+const result = addNumbers({ cost: 15 }, { cost: 10 })
+// Result: { cost: 25 }
 ```
 
 ### Emitter
