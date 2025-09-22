@@ -2,7 +2,7 @@
   "name": "utilful",
   "type": "module",
   "version": "2.1.1",
-  "packageManager": "pnpm@10.11.1",
+  "packageManager": "pnpm@10.17.1",
   "description": "A collection of TypeScript utilities",
   "author": "Johann Schopplich <hello@johannschopplich.com>",
   "license": "MIT",
@@ -78,13 +78,13 @@
     "release": "bumpp"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^4.13.3",
-    "@types/node": "^22.15.29",
-    "bumpp": "^10.1.1",
-    "eslint": "^9.28.0",
-    "tsdown": "^0.12.6",
-    "typescript": "^5.8.3",
-    "vitest": "^3.2.1"
+    "@antfu/eslint-config": "^5.4.1",
+    "@types/node": "^24.5.2",
+    "bumpp": "^10.2.3",
+    "eslint": "^9.36.0",
+    "tsdown": "^0.15.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
