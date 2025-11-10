@@ -55,14 +55,16 @@ Converts an array of objects to a comma-separated values (CSV) string that conta
 ```ts
 declare function createCSV<T extends Record<string, unknown>>(
   data: T[],
-  columns: (keyof T)[],
+  columns: readonly (keyof T)[],
   options?: {
     /** @default ',' */
     delimiter?: string
     /** @default true */
-    includeHeaders?: boolean
+    addHeader?: boolean
     /** @default false */
     quoteAll?: boolean
+    /** @default '\n' */
+    lineEnding?: string
   }
 ): string
 ```
@@ -94,10 +96,18 @@ type CSVRow<T extends string = string> = Record<T, string>
 declare function parseCSV<Header extends string>(
   csv?: string | null | undefined,
   options?: {
-  /** @default ',' */
+    /** @default ',' */
     delimiter?: string
-    /** @default true */
-    trimValues?: boolean
+    /**
+     * Trim whitespace from headers and values.
+     * @default true
+     */
+    trim?: boolean
+    /**
+     * Throw error if row has more fields than headers.
+     * @default true
+     */
+    strict?: boolean
   }
 ): CSVRow<Header>[]
 ```
@@ -105,9 +115,11 @@ declare function parseCSV<Header extends string>(
 **Example:**
 
 ```ts
-const csv = `name,age
+const csv = `
+name,age
 John,30
-Jane,25`
+Jane,25
+`
 
 const data = parseCSV<'name' | 'age'>(csv) // [{ name: 'John', age: '30' }, { name: 'Jane', age: '25' }]
 ```

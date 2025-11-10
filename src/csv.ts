@@ -20,7 +20,7 @@ export type CSVRow<T extends string = string> = Record<T, string>
  */
 export function createCSV<T extends Record<string, unknown>>(
   data: T[],
-  columns: (keyof T)[],
+  columns: readonly (keyof T)[],
   options: {
     /** @default ',' */
     delimiter?: string
@@ -28,26 +28,29 @@ export function createCSV<T extends Record<string, unknown>>(
     addHeader?: boolean
     /** @default false */
     quoteAll?: boolean
+    /** @default '\n' */
+    lineEnding?: string
   } = {},
 ): string {
   const {
     delimiter = ',',
     addHeader = true,
     quoteAll = false,
+    lineEnding = '\n',
   } = options
 
-  const escapeAndQuote = (value: unknown) =>
+  const formatCell = (value: unknown) =>
     escapeCSVValue(value, { delimiter, quoteAll })
 
   const rows = data.map(obj =>
-    columns.map(key => escapeAndQuote(obj[key])).join(delimiter),
+    columns.map(key => formatCell(obj[key])).join(delimiter),
   )
 
   if (addHeader) {
-    rows.unshift(columns.map(escapeAndQuote).join(delimiter))
+    rows.unshift(columns.map(formatCell).join(delimiter))
   }
 
-  return rows.join('\n')
+  return rows.join(lineEnding)
 }
 
 /**
@@ -80,19 +83,19 @@ export function escapeCSVValue(
     return ''
   }
 
-  const stringValue = String(value)
-  const needsQuoting = quoteAll
-    || stringValue.includes(delimiter)
-    || stringValue.includes('"')
-    || stringValue.includes('\n')
-    || stringValue.includes('\r')
+  const coercedValue = String(value)
+  const requiresQuoting = quoteAll
+    || coercedValue.includes(delimiter)
+    || coercedValue.includes('"')
+    || coercedValue.includes('\n')
+    || coercedValue.includes('\r')
 
-  if (needsQuoting) {
+  if (requiresQuoting) {
     // Escape quotes and wrap the value
-    return `"${stringValue.replaceAll('"', '""')}"`
+    return `"${coercedValue.replaceAll('"', '""')}"`
   }
 
-  return stringValue
+  return coercedValue
 }
 
 /**
@@ -114,8 +117,16 @@ export function parseCSV<Header extends string>(
   options: {
     /** @default ',' */
     delimiter?: string
-    /** @default true */
-    trimValues?: boolean
+    /**
+     * Trim whitespace from headers and values.
+     * @default true
+     */
+    trim?: boolean
+    /**
+     * Throw error if row has more fields than headers.
+     * @default true
+     */
+    strict?: boolean
   } = {},
 ): CSVRow<Header>[] {
   if (!csv?.trim())
@@ -127,7 +138,7 @@ export function parseCSV<Header extends string>(
   let currentField = ''
   let inQuotes = false
 
-  const { delimiter = ',', trimValues = true } = options
+  const { delimiter = ',', trim = true, strict = true } = options
 
   const appendField = () => {
     currentRow.push(currentField)
@@ -142,12 +153,12 @@ export function parseCSV<Header extends string>(
 
   // Process character by character to handle quotes properly
   for (let i = 0; i < csv.length; i++) {
-    const char = csv[i]
-    const nextChar = i + 1 < csv.length ? csv[i + 1] : ''
+    const character = csv[i]
+    const nextCharacter = i + 1 < csv.length ? csv[i + 1] : ''
 
     // Handle quotes
-    if (char === '"') {
-      if (inQuotes && nextChar === '"') {
+    if (character === '"') {
+      if (inQuotes && nextCharacter === '"') {
         // Escaped quote inside quotes
         currentField += '"'
         i++ // Skip the next quote
@@ -158,18 +169,18 @@ export function parseCSV<Header extends string>(
       }
     }
     // Handle field delimiter when not in quotes
-    else if (char === delimiter && !inQuotes) {
+    else if (character === delimiter && !inQuotes) {
       appendField()
     }
     // Handle row delimiter when not in quotes
-    else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
-      if (char === '\r')
+    else if ((character === '\n' || (character === '\r' && nextCharacter === '\n')) && !inQuotes) {
+      if (character === '\r')
         i++
 
       appendRow()
     }
     else {
-      currentField += char
+      currentField += character
     }
   }
 
@@ -182,29 +193,53 @@ export function parseCSV<Header extends string>(
   if (rows.length <= 1)
     return []
 
-  const headers = rows[0]!
+  const [headerRow] = rows
+  if (!headerRow)
+    return []
 
-  const isNonEmptyField = trimValues
+  const headers = trim ? headerRow.map(h => h.trim()) : headerRow
+
+  // Validate headers
+  const headersWithEmptyNames = headers.filter(h => h.length === 0)
+  if (headersWithEmptyNames.length > 0) {
+    const positions = headers
+      .map((h, i) => h.length === 0 ? i + 1 : -1)
+      .filter(i => i > 0)
+      .join(', ')
+    throw new SyntaxError(`CSV header row contains empty column name(s) at position(s): ${positions}`)
+  }
+
+  const duplicateHeaderNames = headers.filter((h, i) => headers.indexOf(h) !== i)
+  if (duplicateHeaderNames.length > 0) {
+    throw new SyntaxError(`CSV header row contains duplicate column name(s): ${[...new Set(duplicateHeaderNames)].join(', ')}`)
+  }
+
+  const isFieldPopulated = trim
     ? (field: string) => field.trim().length > 0
     : (field: string) => field.length > 0
 
   return rows.slice(1)
-    .filter(row => row.some(isNonEmptyField))
-    .map((values, rowIndex) => {
-      if (values.length > headers.length) {
-        const extraValues = values.slice(headers.length)
-        const hasMeaningfulExtra = extraValues.some(isNonEmptyField)
+    .filter(row => row.length > 1 || row.some(isFieldPopulated))
+    .map((fieldValues, rowIndex) => {
+      if (fieldValues.length > headers.length) {
+        const fieldsExceedingHeaders = fieldValues.slice(headers.length)
+        const containsNonEmptyOverflow = fieldsExceedingHeaders.some(isFieldPopulated)
 
-        if (hasMeaningfulExtra) {
-          throw new Error(`Row ${rowIndex + 2} has more fields (${values.length}) than headers (${headers.length}).`)
+        if (strict && containsNonEmptyOverflow) {
+          const expectedCount = headers.length
+          const actualCount = fieldValues.length
+          const excessCount = actualCount - expectedCount
+          throw new SyntaxError(
+            `CSV row ${rowIndex + 2} has ${excessCount} extra field(s): expected ${expectedCount} column(s), found ${actualCount}`,
+          )
         }
       }
 
       return Object.fromEntries(
-        headers.map((header, index) => {
-          const rawValue = index < values.length ? values[index] ?? '' : ''
-          const normalizedValue = trimValues ? rawValue.trim() : rawValue
-          return [header, normalizedValue]
+        headers.map((header, columnIndex) => {
+          const untrimmedValue = columnIndex < fieldValues.length ? fieldValues[columnIndex] ?? '' : ''
+          const value = trim ? untrimmedValue.trim() : untrimmedValue
+          return [header, value]
         }),
       ) as CSVRow<Header>
     })
