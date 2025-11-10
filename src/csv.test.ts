@@ -205,6 +205,13 @@ Jane,"Single line"`
       ])
     })
 
+    it('preserves header whitespace when trimming values', () => {
+      const csv = ' name , age \n John , 30 '
+      expect(parseCSV<' name ' | ' age '>(csv)).toEqual([
+        { ' name ': 'John', ' age ': '30' },
+      ])
+    })
+
     it('handles complex nested quotes and escaping', () => {
       const csv = `name,description
 "Product A","This product has ""special"" features and ""unique"" design"
@@ -218,6 +225,13 @@ Jane,"Single line"`
       ])
     })
 
+    it('preserves whitespace-only rows when trimValues is false', () => {
+      const csv = 'name\n   '
+      expect(parseCSV(csv, { trimValues: false })).toEqual([
+        { name: '   ' },
+      ])
+    })
+
     it('handles multiple consecutive delimiters as empty fields', () => {
       const csv = 'name,age,,city\nJohn,30,,New York\nJane,,,Boston\nBob,40,,'
 
@@ -226,6 +240,11 @@ Jane,"Single line"`
         { 'name': 'Jane', 'age': '', '': '', 'city': 'Boston' },
         { 'name': 'Bob', 'age': '40', '': '', 'city': '' },
       ])
+    })
+
+    it('throws when row has more fields than headers', () => {
+      const csv = 'name,age\nJohn,30,Engineer'
+      expect(() => parseCSV(csv)).toThrowError('Row 2 has more fields (3) than headers (2).')
     })
 
     it('handles mixed line endings correctly', () => {

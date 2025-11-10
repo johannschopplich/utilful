@@ -129,6 +129,17 @@ export function parseCSV<Header extends string>(
 
   const { delimiter = ',', trimValues = true } = options
 
+  const appendField = () => {
+    currentRow.push(currentField)
+    currentField = ''
+  }
+
+  const appendRow = () => {
+    appendField()
+    rows.push(currentRow)
+    currentRow = []
+  }
+
   // Process character by character to handle quotes properly
   for (let i = 0; i < csv.length; i++) {
     const char = csv[i]
@@ -146,21 +157,16 @@ export function parseCSV<Header extends string>(
         inQuotes = !inQuotes
       }
     }
-    // Handle field delimiter (comma) when not in quotes
+    // Handle field delimiter when not in quotes
     else if (char === delimiter && !inQuotes) {
-      currentRow.push(trimValues ? currentField.trim() : currentField)
-      currentField = ''
+      appendField()
     }
-    // Handle row delimiter (newline) when not in quotes
+    // Handle row delimiter when not in quotes
     else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
-      // Skip the next `\n` in `\r\n`
       if (char === '\r')
         i++
 
-      currentRow.push(trimValues ? currentField.trim() : currentField)
-      rows.push(currentRow)
-      currentRow = []
-      currentField = ''
+      appendRow()
     }
     else {
       currentField += char
@@ -169,8 +175,7 @@ export function parseCSV<Header extends string>(
 
   // Handle the last field and row if needed
   if (currentField || currentRow.length > 0) {
-    currentRow.push(trimValues ? currentField.trim() : currentField)
-    rows.push(currentRow)
+    appendRow()
   }
 
   // No data or only header row
@@ -179,11 +184,28 @@ export function parseCSV<Header extends string>(
 
   const headers = rows[0]!
 
+  const isNonEmptyField = trimValues
+    ? (field: string) => field.trim().length > 0
+    : (field: string) => field.length > 0
+
   return rows.slice(1)
-    .filter(row => row.some(field => field.trim().length > 0)) // Skip empty rows
-    .map((values) => {
+    .filter(row => row.some(isNonEmptyField))
+    .map((values, rowIndex) => {
+      if (values.length > headers.length) {
+        const extraValues = values.slice(headers.length)
+        const hasMeaningfulExtra = extraValues.some(isNonEmptyField)
+
+        if (hasMeaningfulExtra) {
+          throw new Error(`Row ${rowIndex + 2} has more fields (${values.length}) than headers (${headers.length}).`)
+        }
+      }
+
       return Object.fromEntries(
-        headers.map((header, index) => [header, index < values.length ? values[index] : '']),
+        headers.map((header, index) => {
+          const rawValue = index < values.length ? values[index] ?? '' : ''
+          const normalizedValue = trimValues ? rawValue.trim() : rawValue
+          return [header, normalizedValue]
+        }),
       ) as CSVRow<Header>
     })
 }
