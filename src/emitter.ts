@@ -6,7 +6,7 @@ export type EventType = string | symbol
 export type Handler<T = unknown> = (event: T) => void
 export type WildcardHandler<T = Record<string, unknown>> = (
   type: keyof T,
-  event: T[keyof T]
+  event: T[keyof T],
 ) => void
 
 export type EventHandlerList<T = unknown> = Handler<T>[]
