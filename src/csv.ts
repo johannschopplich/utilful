@@ -51,7 +51,8 @@ export function createCSV<T extends Record<string, unknown>>(
   )
 
   if (addHeader) {
-    rows.unshift(columns.map(formatCell).join(delimiter))
+    const header = columns.map(formatCell).join(delimiter)
+    return header + lineEnding + rows.join(lineEnding)
   }
 
   return rows.join(lineEnding)
@@ -224,9 +225,17 @@ export function parseCSV<Header extends string>(
     throw new SyntaxError(`CSV header row contains empty column name(s) at position(s): ${positions}`)
   }
 
-  const duplicateHeaderNames = headers.filter((h, i) => headers.indexOf(h) !== i)
-  if (duplicateHeaderNames.length > 0) {
-    throw new SyntaxError(`CSV header row contains duplicate column name(s): ${[...new Set(duplicateHeaderNames)].join(', ')}`)
+  const headerSet = new Set<string>()
+  const duplicateHeaderNames = new Set<string>()
+  for (const header of headers) {
+    if (headerSet.has(header))
+      duplicateHeaderNames.add(header)
+    else
+      headerSet.add(header)
+  }
+
+  if (duplicateHeaderNames.size > 0) {
+    throw new SyntaxError(`CSV header row contains duplicate column name(s): ${[...duplicateHeaderNames].join(', ')}`)
   }
 
   const isFieldPopulated = trim
