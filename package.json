@@ -1,7 +1,7 @@
 {
   "name": "utilful",
   "type": "module",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "packageManager": "pnpm@10.21.0",
   "description": "A collection of TypeScript utilities",
   "author": "Johann Schopplich <hello@johannschopplich.com>",
