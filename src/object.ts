@@ -1,3 +1,5 @@
+// #region Memoize
+
 /**
  * A simple general purpose memoizer utility.
  * - Lazily computes a value when accessed
@@ -22,6 +24,10 @@ export function memoize<T>(getter: () => T): { value: T } {
   }
 }
 
+// #endregion
+
+// #region Object utilities
+
 /**
  * Strictly typed `Object.keys`.
  */
@@ -35,6 +41,10 @@ export function objectKeys<T extends Record<any, any>>(obj: T): Array<`${keyof T
 export function objectEntries<T extends Record<any, any>>(obj: T): Array<[keyof T, T[keyof T]]> {
   return Object.entries(obj) as Array<[keyof T, T[keyof T]]>
 }
+
+// #endregion
+
+// #region Deep apply
 
 /**
  * Deeply applies a callback to every key-value pair in the given object, as well as nested objects and arrays.
@@ -62,3 +72,5 @@ export function deepApply<T extends Record<any, any>>(
 function isObject(value: unknown): value is Record<any, any> {
   return Object.prototype.toString.call(value) === '[object Object]'
 }
+
+// #endregion

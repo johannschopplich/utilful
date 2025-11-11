@@ -1,5 +1,7 @@
 // Forked from unjs/defu (MIT)
 
+// #region Types
+
 type PlainObject = Record<PropertyKey, any>
 
 export type DefuMerger<T extends PlainObject = PlainObject> = (
@@ -17,6 +19,10 @@ export type DefuFn = <T extends PlainObject>(
   ...defaults: PlainObject[]
 ) => T
 
+// #endregion
+
+// #region Create defu
+
 /**
  * Create a defu function with optional custom merger
  */
@@ -32,6 +38,10 @@ export function createDefu(
 }
 
 export const defu: DefuFn = createDefu()
+
+// #endregion
+
+// #region Internal helpers
 
 function _defu<T extends PlainObject>(
   source: T,
@@ -101,3 +111,5 @@ function isPlainObject(value: unknown): value is PlainObject {
 
   return true
 }
+
+// #endregion

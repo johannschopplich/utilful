@@ -1,5 +1,11 @@
+// #region Types
+
 export type QueryValue = string | number | boolean | QueryValue[] | Record<string, any> | null | undefined
 export type QueryObject = Record<string, QueryValue | QueryValue[]>
+
+// #endregion
+
+// #region Slash manipulation
 
 /**
  * Removes the leading slash from the given path if it has one.
@@ -45,6 +51,10 @@ export function withTrailingSlash(path?: string): string {
   return path[path.length - 1] === '/' ? path : `${path}/`
 }
 
+// #endregion
+
+// #region Path joining
+
 /**
  * Joins the given URL path segments, ensuring that there is only one slash between them.
  */
@@ -82,6 +92,10 @@ export function joinURL(
   return result
 }
 
+// #endregion
+
+// #region Base path manipulation
+
 /**
  * Adds the base path to the input path, if it is not already present.
  */
@@ -114,6 +128,10 @@ export function withoutBase(input = '', base = ''): string {
   const trimmed = input.slice(_base.length)
   return trimmed[0] === '/' ? trimmed : `/${trimmed}`
 }
+
+// #endregion
+
+// #region Query string manipulation
 
 /**
  * Returns the pathname of the given path, which is the path without the query string.
@@ -181,3 +199,5 @@ function normalizeQueryValue(value: QueryValue): string {
 
   return String(value)
 }
+
+// #endregion

@@ -1,8 +1,14 @@
+// #region Types
+
 export type Result<T, E> = Ok<T> | Err<E>
 
 export interface OkData<T> { value: T, error: undefined }
 export interface ErrData<E> { value: undefined, error: E }
 export type ResultData<T, E> = OkData<T> | ErrData<E>
+
+// #endregion
+
+// #region Classes
 
 export class Ok<T> {
   readonly value: T
@@ -20,6 +26,10 @@ export class Err<E> {
   }
 }
 
+// #endregion
+
+// #region Factory functions
+
 export function ok<T>(value: T): Ok<T> {
   return new Ok(value)
 }
@@ -29,6 +39,10 @@ export function err<E = unknown>(error: E): Err<E>
 export function err<E = unknown>(error: E): Err<E> {
   return new Err(error)
 }
+
+// #endregion
+
+// #region Result conversion
 
 export function toResult<T, E = unknown>(fn: () => T): Result<T, E>
 export function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
@@ -69,3 +83,5 @@ export function tryCatch<T, E = unknown>(
 
   return unwrapResult(toResult<T, E>(fnOrPromise))
 }
+
+// #endregion

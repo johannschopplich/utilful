@@ -1,4 +1,7 @@
 /* eslint-disable ts/method-signature-style */
+
+// #region Types
+
 export type EventType = string | symbol
 
 // An event handler can take an optional event argument
@@ -30,6 +33,10 @@ export interface Emitter<Events extends Record<EventType, unknown>> {
   emit<Key extends keyof Events>(type: Key, event: Events[Key]): void
   emit<Key extends keyof Events>(type: undefined extends Events[Key] ? Key : never): void
 }
+
+// #endregion
+
+// #region Create emitter
 
 /**
  * Simple functional event emitter / pubsub.
@@ -126,3 +133,5 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
     },
   }
 }
+
+// #endregion

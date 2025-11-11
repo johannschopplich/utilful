@@ -1,3 +1,5 @@
+// #region Parse JSON
+
 /**
  * Type-safe wrapper around `JSON.stringify`.
  *
@@ -16,6 +18,10 @@ export function tryParseJSON<T = unknown>(value: unknown): T {
     return value as T
   }
 }
+
+// #endregion
+
+// #region Clone JSON
 
 /**
  * Clones the given JSON value.
@@ -41,3 +47,5 @@ export function cloneJSON<T>(value: T): T {
 
   return result as T
 }
+
+// #endregion

@@ -1,4 +1,10 @@
+// #region Constants
+
 const URL_ALPHABET = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict'
+
+// #endregion
+
+// #region Template
 
 /**
  * Simple template engine to replace variables in a string.
@@ -19,6 +25,10 @@ export function template(
   })
 }
 
+// #endregion
+
+// #region Random ID generation
+
 /**
  * Generates a random string.
  *
@@ -35,3 +45,5 @@ export function generateRandomId(size: number = 16, dict: string = URL_ALPHABET)
     id += dict[(Math.random() * len) | 0]
   return id
 }
+
+// #endregion

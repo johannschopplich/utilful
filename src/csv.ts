@@ -1,8 +1,14 @@
+// #region Constants
+
 export const COMMA = ','
 export const DOUBLE_QUOTE = '"'
 export const NEWLINE = '\n'
 export const CARRIAGE_RETURN = '\r'
 export const ESCAPED_QUOTE = '""'
+
+// #endregion
+
+// #region Types
 
 /**
  * Represents a row in a CSV file with column names of type T.
@@ -22,6 +28,10 @@ export interface CSVCreateOptions {
   /** @default '\n' */
   lineEnding?: string
 }
+
+// #endregion
+
+// #region Create CSV
 
 /**
  * Converts an array of objects to a comma-separated values (CSV) string.
@@ -121,6 +131,10 @@ export function createCSV<T extends Record<string, unknown>>(
   return rows.join(lineEnding)
 }
 
+// #endregion
+
+// #region Escape CSV value
+
 /**
  * Escapes a value for a CSV string.
  *
@@ -165,6 +179,10 @@ export function escapeCSVValue(
 
   return coercedValue
 }
+
+// #endregion
+
+// #region Parse CSV
 
 /**
  * Parses a comma-separated values (CSV) string into an array of objects.
@@ -332,6 +350,10 @@ export function parseCSV<Header extends string>(
     })
 }
 
+// #endregion
+
+// #region Helper functions
+
 /**
  * Infers column names from data by collecting the union of keys
  * across all rows in first-seen order.
@@ -354,3 +376,5 @@ function inferColumns<T extends Record<string, unknown>>(rows: readonly T[]): (k
 
   return columns as (keyof T)[]
 }
+
+// #endregion
