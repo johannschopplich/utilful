@@ -45,6 +45,15 @@ describe('csv', () => {
   })
 
   describe('createCSV', () => {
+    it('throws error for invalid delimiter (not single character)', () => {
+      expect(() => createCSV(people, ['name', 'age'], { delimiter: '' }))
+        .toThrow(RangeError)
+      expect(() => createCSV(people, ['name', 'age'], { delimiter: '' }))
+        .toThrowError('CSV delimiter must be a single character, got ""')
+      expect(() => createCSV(people, ['name', 'age'], { delimiter: ',,' }))
+        .toThrowError('CSV delimiter must be a single character, got ",,"')
+    })
+
     it('creates a CSV string with headers by default', () => {
       const result = createCSV(people, ['name', 'age'])
       expect(result).toBe('name,age\nJohn,30\nJane,25\nBob,40')
@@ -137,12 +146,19 @@ describe('csv', () => {
       const result = createCSV(data, ['a', 'b', 'c', 'd'])
       expect(result).toBe(`a,b,c,d\n1,false,9007199254740993,${d.toString()}`)
     })
-
-    // Future-facing behavior (decide spec and implement):
-    it.todo('throws on empty fields array (ambiguous CSV with no columns)')
   })
 
   describe('parseCSV', () => {
+    it('throws error for invalid delimiter (not single character)', () => {
+      const csv = 'name,age\nJohn,30'
+      expect(() => parseCSV(csv, { delimiter: '' }))
+        .toThrow(RangeError)
+      expect(() => parseCSV(csv, { delimiter: '' }))
+        .toThrowError('CSV delimiter must be a single character, got ""')
+      expect(() => parseCSV(csv, { delimiter: ';;' }))
+        .toThrowError('CSV delimiter must be a single character, got ";;"')
+    })
+
     it('parses a simple CSV string into an array of objects', () => {
       const csv = 'name,age\nJohn,30\nJane,25\nBob,40'
       expect(parseCSV(csv)).toEqual([
@@ -243,7 +259,7 @@ Jane,"Single line"
       ])
     })
 
-    it('errors when row has more fields than headers (default strict)', () => {
+    it('throws error when row has more fields than headers (default strict)', () => {
       const csv = 'name,age\nJohn,30,Engineer'
       expect(() => parseCSV(csv)).toThrow(SyntaxError)
       expect(() => parseCSV(csv)).toThrowError('CSV row 2 has 1 extra field(s): expected 2 column(s), found 3')
@@ -300,13 +316,25 @@ name,description
       expect(parseCSV(csv)).toEqual([{ emoji: '😀', word: 'café' }])
     })
 
-    // Prefer failing malformed CSV by default; consider an option for relaxed parsing.
-    it.todo('throws on mismatched/unterminated quoted fields in strict mode')
-    it.todo('with relaxedQuotes: true, tolerates mismatched quotes by consuming until EOF')
+    it('throws error for unterminated quoted field', () => {
+      const csv = 'name,age\n"John,30'
+      expect(() => parseCSV(csv)).toThrow(SyntaxError)
+      expect(() => parseCSV(csv)).toThrowError('CSV contains unterminated quoted field at row 2')
+    })
+
+    it('throws error for mismatched quotes in field', () => {
+      const csv = 'name,age\nJohn,"30'
+      expect(() => parseCSV(csv)).toThrow(SyntaxError)
+      expect(() => parseCSV(csv)).toThrowError('CSV contains unterminated quoted field at row 2')
+
+      const csv2 = 'name,age\n"John"",30'
+      expect(() => parseCSV(csv2)).toThrow(SyntaxError)
+      expect(() => parseCSV(csv2)).toThrowError('CSV contains unterminated quoted field at row 2')
+    })
   })
 
   // Cross-function guarantees
-  describe('round-trip: createCSV -> parseCSV', () => {
+  describe('round-trip: createCSV → parseCSV', () => {
     it('round-trips basic data with default options', () => {
       const fields = ['name', 'age', 'city'] as const
       const csv = createCSV(people, fields)

@@ -39,6 +39,10 @@ export function createCSV<T extends Record<string, unknown>>(
     lineEnding = '\n',
   } = options
 
+  if (delimiter.length !== 1) {
+    throw new RangeError(`CSV delimiter must be a single character, got "${delimiter}"`)
+  }
+
   const formatCell = (value: unknown) =>
     escapeCSVValue(value, { delimiter, quoteAll })
 
@@ -137,8 +141,13 @@ export function parseCSV<Header extends string>(
   let currentRow: string[] = []
   let currentField = ''
   let inQuotes = false
+  let currentRowNumber = 1 // Tracks the current row being parsed (1-indexed)
 
   const { delimiter = ',', trim = true, strict = true } = options
+
+  if (delimiter.length !== 1) {
+    throw new RangeError(`CSV delimiter must be a single character, got "${delimiter}"`)
+  }
 
   const appendField = () => {
     currentRow.push(currentField)
@@ -178,6 +187,7 @@ export function parseCSV<Header extends string>(
         i++
 
       appendRow()
+      currentRowNumber++
     }
     else {
       currentField += character
@@ -187,6 +197,11 @@ export function parseCSV<Header extends string>(
   // Handle the last field and row if needed
   if (currentField || currentRow.length > 0) {
     appendRow()
+  }
+
+  // Check for unterminated quoted field
+  if (inQuotes) {
+    throw new SyntaxError(`CSV contains unterminated quoted field at row ${currentRowNumber}`)
   }
 
   // No data or only header row
