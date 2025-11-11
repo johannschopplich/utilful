@@ -9,7 +9,7 @@ describe('result', () => {
       expect(result).toBeInstanceOf(Ok)
       expect(result.ok).toBe(true)
       expect(result.value).toBe(1)
-      expectTypeOf(result).toMatchTypeOf<Ok<number>>()
+      expectTypeOf(result).toEqualTypeOf<Ok<number>>()
     })
   })
 
@@ -20,7 +20,7 @@ describe('result', () => {
       expect(result).toBeInstanceOf(Err)
       expect(result.ok).toBe(false)
       expect(result.error).toBe(error)
-      expectTypeOf(result).toMatchTypeOf<Err<Error>>()
+      expectTypeOf(result).toEqualTypeOf<Err<Error>>()
     })
   })
 
@@ -30,7 +30,7 @@ describe('result', () => {
       expect(result).toBeInstanceOf(Ok)
       assertOk(result)
       expect(result.value).toBe(1)
-      expectTypeOf(result).toMatchTypeOf<Ok<number>>()
+      expectTypeOf(result).toEqualTypeOf<Ok<number>>()
     })
 
     it('handles failed synchronous operations', () => {
@@ -41,7 +41,7 @@ describe('result', () => {
       assertErr(result)
       expect(result.error).toBeInstanceOf(Error)
       expect(result.error.message).toBe('test')
-      expectTypeOf(result).toMatchTypeOf<Err<unknown>>()
+      expectTypeOf(result).toExtend<Err<unknown>>()
     })
 
     it('handles successful asynchronous operations', async () => {
@@ -49,7 +49,7 @@ describe('result', () => {
       expect(result).toBeInstanceOf(Ok)
       assertOk(result)
       expect(result.value).toBe(1)
-      expectTypeOf(result).toMatchTypeOf<Ok<number>>()
+      expectTypeOf(result).toEqualTypeOf<Ok<number>>()
     })
 
     it('handles failed asynchronous operations', async () => {
@@ -58,7 +58,7 @@ describe('result', () => {
       assertErr(result)
       expect(result.error).toBeInstanceOf(Error)
       expect(result.error.message).toBe('test')
-      expectTypeOf(result).toMatchTypeOf<Err<unknown>>()
+      expectTypeOf(result).toExtend<Err<unknown>>()
     })
 
     it('supports custom error types', () => {
@@ -69,7 +69,7 @@ describe('result', () => {
       expect(result).toBeInstanceOf(Err)
       assertErr(result)
       expect(result.error).toBeInstanceOf(CustomError)
-      expectTypeOf(result).toMatchTypeOf<Result<number, CustomError>>()
+      expectTypeOf(result).toExtend<Result<number, CustomError>>()
     })
 
     it('allows JSON parsing with type inference', () => {
@@ -77,7 +77,7 @@ describe('result', () => {
       expect(result).toBeInstanceOf(Ok)
       assertOk(result)
       expect(result.value).toEqual({ test: 1 })
-      expectTypeOf(result).toMatchTypeOf<Ok<{ test: number }>>()
+      expectTypeOf(result).toEqualTypeOf<Ok<{ test: number }>>()
     })
 
     it('handles JSON parsing errors', () => {
@@ -85,7 +85,7 @@ describe('result', () => {
       expect(result).toBeInstanceOf(Err)
       assertErr(result)
       expect(result.error).toBeInstanceOf(SyntaxError)
-      expectTypeOf(result).toMatchTypeOf<Err<unknown>>()
+      expectTypeOf(result).toEqualTypeOf<Err<unknown>>()
     })
   })
 
@@ -94,7 +94,7 @@ describe('result', () => {
       const result = ok(1)
       const unwrapped = unwrapResult(result)
       expect(unwrapped).toEqual({ value: 1, error: undefined })
-      expectTypeOf(unwrapped).toMatchTypeOf<{ value: number, error: undefined }>()
+      expectTypeOf(unwrapped).toEqualTypeOf<{ value: number, error: undefined }>()
     })
 
     it('unwraps an Err result', () => {
@@ -102,14 +102,14 @@ describe('result', () => {
       const result = err(error)
       const unwrapped = unwrapResult(result)
       expect(unwrapped).toEqual({ value: undefined, error })
-      expectTypeOf(unwrapped).toMatchTypeOf<{ value: undefined, error: Error }>()
+      expectTypeOf(unwrapped).toEqualTypeOf<{ value: undefined, error: Error }>()
     })
 
     it('unwraps a result with type inference', () => {
       const result = toResult(() => 1)
       const unwrapped = unwrapResult(result)
       expect(unwrapped).toEqual({ value: 1, error: undefined })
-      expectTypeOf(unwrapped).toMatchTypeOf<{ value: number | undefined, error: unknown }>()
+      expectTypeOf(unwrapped).toExtend<{ value: number | undefined, error: unknown }>()
     })
   })
 
@@ -117,7 +117,7 @@ describe('result', () => {
     it('returns unwrapped value for successful operations', () => {
       const result = tryCatch(() => 1)
       expect(result).toEqual({ value: 1, error: undefined })
-      expectTypeOf(result).toMatchTypeOf<ResultData<number, unknown>>()
+      expectTypeOf(result).toEqualTypeOf<ResultData<number, unknown>>()
     })
 
     it('returns unwrapped error for failed operations', () => {
@@ -126,7 +126,7 @@ describe('result', () => {
         throw error
       })
       expect(result).toEqual({ value: undefined, error })
-      expectTypeOf(result).toMatchTypeOf<ResultData<never, Error>>()
+      expectTypeOf(result).toEqualTypeOf<ResultData<never, Error>>()
     })
 
     it('handles async operations', async () => {
