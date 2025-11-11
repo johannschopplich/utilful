@@ -50,26 +50,24 @@ declare function toArray<T>(array?: MaybeArray<T> | null | undefined): T[]
 
 #### `createCSV`
 
-Converts an array of objects to a comma-separated values (CSV) string that contains only the `columns` specified.
+Converts an array of objects to a comma-separated values (CSV) string. You can either specify which columns to include explicitly, or let the function automatically infer all columns from your data.
 
 ```ts
+// With explicit columns
 declare function createCSV<T extends Record<string, unknown>>(
-  data: T[],
+  data: readonly T[],
   columns: readonly (keyof T)[],
-  options?: {
-    /** @default ',' */
-    delimiter?: string
-    /** @default true */
-    addHeader?: boolean
-    /** @default false */
-    quoteAll?: boolean
-    /** @default '\n' */
-    lineEnding?: string
-  }
+  options?: CSVCreateOptions
+): string
+
+// With automatic column inference
+declare function createCSV<T extends Record<string, unknown>>(
+  data: readonly T[],
+  options?: CSVCreateOptions
 ): string
 ```
 
-**Example:**
+**Example with explicit columns:**
 
 ```ts
 const data = [
@@ -77,10 +75,30 @@ const data = [
   { name: 'Jane', age: '25', city: 'Boston' }
 ]
 
+// Only include 'name' and 'age' columns
 const csv = createCSV(data, ['name', 'age'])
 // name,age
 // John,30
 // Jane,25
+```
+
+**Example with automatic column inference:**
+
+When you omit the `columns` parameter, `createCSV` automatically collects all unique keys from your data in first-seen order. This is particularly useful when working with data that has varying structures:
+
+```ts
+const rows = [
+  { name: 'John', age: '30' },
+  { name: 'Jane', city: 'Boston' },
+  { name: 'Bob', age: '40', city: 'Chicago' }
+]
+
+// All columns are automatically detected: name, age, city
+const csv = createCSV(rows)
+// name,age,city
+// John,30,
+// Jane,,Boston
+// Bob,40,Chicago
 ```
 
 #### `parseCSV`
@@ -119,7 +137,7 @@ const csv = `
 name,age
 John,30
 Jane,25
-`
+`.trim()
 
 const data = parseCSV<'name' | 'age'>(csv) // [{ name: 'John', age: '30' }, { name: 'Jane', age: '25' }]
 ```
@@ -134,7 +152,7 @@ Recursively assigns missing properties from defaults to the source object. The s
 
 **Key Features:**
 
-- **Null/undefined handling**: `null` and `undefined` values in source are replaced with defaults
+- **Nullish handling**: `null` and `undefined` values in source are replaced with defaults
 - **Array concatenation**: Arrays are concatenated (source + defaults)
 - **Deep merging**: Nested objects are recursively merged
 - **Type safety**: Preserves TypeScript types
@@ -171,7 +189,7 @@ const result = defu(
 // Result: { items: ['a', 'b', 'c', 'd'] }
 ```
 
-**Null/undefined handling:**
+**Handling null/undefined:**
 
 ```ts
 const result = defu(
@@ -455,8 +473,6 @@ else
 
 The `Result` type represents either success (`Ok`) or failure (`Err`).
 
-**Type Definition:**
-
 ```ts
 type Result<T, E> = Ok<T> | Err<E>
 ```
@@ -485,8 +501,6 @@ const result = new Err('Something went wrong')
 
 Shorthand function to create an `Ok` result. Use it to wrap a successful value.
 
-**Type Definition:**
-
 ```ts
 declare function ok<T>(value: T): Ok<T>
 ```
@@ -494,8 +508,6 @@ declare function ok<T>(value: T): Ok<T>
 #### `err`
 
 Shorthand function to create an `Err` result. Use it to wrap an error value.
-
-**Type Definition:**
 
 ```ts
 declare function err<E extends string = string>(err: E): Err<E>
@@ -506,8 +518,6 @@ declare function err<E = unknown>(err: E): Err<E>
 
 Wraps a function that might throw an error and returns a `Result` with the result of the function.
 
-**Type Definition:**
-
 ```ts
 declare function toResult<T, E = unknown>(fn: () => T): Result<T, E>
 declare function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
@@ -517,6 +527,12 @@ declare function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T
 
 Unwraps a `Result`, `Ok`, or `Err` value and returns the value or error in an object. If the result is an `Ok`, the object contains the value and an `undefined` error. If the result is an `Err`, the object contains an `undefined` value and the error.
 
+```ts
+declare function unwrapResult<T>(result: Ok<T>): { value: T, error: undefined }
+declare function unwrapResult<E>(result: Err<E>): { value: undefined, error: E }
+declare function unwrapResult<T, E>(result: Result<T, E>): { value: T, error: undefined } | { value: undefined, error: E }
+```
+
 **Example:**
 
 ```ts
@@ -524,17 +540,14 @@ const result = toResult(() => JSON.parse('{"foo":"bar"}'))
 const { value, error } = unwrapResult(result)
 ```
 
-**Type Definition:**
-
-```ts
-declare function unwrapResult<T>(result: Ok<T>): { value: T, error: undefined }
-declare function unwrapResult<E>(result: Err<E>): { value: undefined, error: E }
-declare function unwrapResult<T, E>(result: Result<T, E>): { value: T, error: undefined } | { value: undefined, error: E }
-```
-
 #### `tryCatch`
 
 A simpler alternative to `toResult` + `unwrapResult`. It executes a function that might throw an error and directly returns the result in a `ResultData` format. Works with both synchronous functions and promises.
+
+```ts
+declare function tryCatch<T, E = unknown>(fn: () => T): { value: T, error: undefined } | { value: undefined, error: E }
+declare function tryCatch<T, E = unknown>(promise: Promise<T>): Promise<{ value: T, error: undefined } | { value: undefined, error: E }>
+```
 
 **Example:**
 
@@ -546,13 +559,6 @@ const { value, error } = tryCatch(() => JSON.parse('{"foo":"bar"}'))
 
 // Asynchronous usage
 const { value, error } = await tryCatch(fetch('https://api.example.com/data').then(r => r.json()))
-```
-
-**Type Definition:**
-
-```ts
-declare function tryCatch<T, E = unknown>(fn: () => T): { value: T, error: undefined } | { value: undefined, error: E }
-declare function tryCatch<T, E = unknown>(promise: Promise<T>): Promise<{ value: T, error: undefined } | { value: undefined, error: E }>
 ```
 
 ### String

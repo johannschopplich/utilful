@@ -14,10 +14,9 @@ describe('csv', () => {
       expect(escapeCSVValue('simple')).toBe('simple')
       expect(escapeCSVValue(42)).toBe('42')
       expect(escapeCSVValue(true)).toBe('true')
-      // also check BigInt and Date stringification
       expect(escapeCSVValue(9007199254740993n)).toBe('9007199254740993')
-      const d = new Date('2020-01-02T03:04:05.000Z')
-      expect(escapeCSVValue(d)).toBe(d.toString())
+      const date = new Date('2020-01-02T03:04:05.000Z')
+      expect(escapeCSVValue(date)).toBe(date.toString())
     })
 
     it('returns empty string for null or undefined', () => {
@@ -100,12 +99,12 @@ describe('csv', () => {
       expect(result).toBe('name,age\n"John\nDoe",30\nJane,"25\n26"')
     })
 
-    it('quotes all values when specified (including headers)', () => {
+    it('quotes all values when specified', () => {
       const result = createCSV(people, ['name', 'age'], { quoteAll: true })
       expect(result).toBe('"name","age"\n"John","30"\n"Jane","25"\n"Bob","40"')
     })
 
-    it('handles empty data array (still outputs header when addHeader is true)', () => {
+    it('outputs header only for empty data array', () => {
       const result = createCSV([], ['name', 'age'])
       expect(result).toBe('name,age')
     })
@@ -121,7 +120,7 @@ describe('csv', () => {
       expect(result).toBe('name,age\nJohn,\n,25\n,40\nJane,')
     })
 
-    it('ignores extra properties not listed in fields', () => {
+    it('ignores extra properties not listed in columns', () => {
       const data = [
         { name: 'John', age: '30', city: 'NYC', extra: 'ignore-me' },
       ]
@@ -145,6 +144,28 @@ describe('csv', () => {
       const data = [{ a: 1, b: false, c: 9007199254740993n, d }]
       const result = createCSV(data, ['a', 'b', 'c', 'd'])
       expect(result).toBe(`a,b,c,d\n1,false,9007199254740993,${d.toString()}`)
+    })
+
+    describe('column inference (when columns not specified)', () => {
+      it('infers union of keys in first-seen order', () => {
+        const mixed = [
+          { name: 'John', age: '30' }, // Introduces name, age
+          { name: 'Jane', city: 'Boston' }, // Introduces city
+          { name: 'Bob', age: '40', city: 'Chicago' },
+        ]
+        const result = createCSV(mixed)
+        expect(result).toBe('name,age,city\nJohn,30,\nJane,,Boston\nBob,40,Chicago')
+      })
+
+      it('accepts options', () => {
+        const result = createCSV(people, { addHeader: false })
+        expect(result).toBe('John,30,New York\nJane,25,Boston\nBob,40,Chicago')
+      })
+
+      it('returns empty string for empty data', () => {
+        expect(createCSV([], { addHeader: true })).toBe('')
+        expect(createCSV([], { addHeader: false })).toBe('')
+      })
     })
   })
 
@@ -203,14 +224,14 @@ describe('csv', () => {
       ])
     })
 
-    it('handles values with newlines (quoted)', () => {
+    it('handles values with newlines', () => {
       const csv = `
 name,bio
 "John Doe","Line 1
 Line 2"
 Jane,"Single line"
-`.trim()
-      expect(parseCSV(csv)).toEqual([
+`
+      expect(parseCSV(csv.trim())).toEqual([
         { name: 'John Doe', bio: 'Line 1\nLine 2' },
         { name: 'Jane', bio: 'Single line' },
       ])
@@ -298,8 +319,8 @@ name,description
 "Product A","This product has ""special"" features and ""unique"" design"
 "Product B","Another ""cool"" item with multiple ""quoted"" words"
 "Product C",Normal description
-`.trim()
-      expect(parseCSV(csv)).toEqual([
+`
+      expect(parseCSV(csv.trim())).toEqual([
         { name: 'Product A', description: 'This product has "special" features and "unique" design' },
         { name: 'Product B', description: 'Another "cool" item with multiple "quoted" words' },
         { name: 'Product C', description: 'Normal description' },
@@ -350,6 +371,16 @@ name,description
       const fields = ['name', 'age', 'city'] as const
       const csv = createCSV(people, fields, { delimiter: '\t', quoteAll: true, lineEnding: '\r\n' })
       const out = parseCSV(csv, { delimiter: '\t' })
+      expect(out).toEqual([
+        { name: 'John', age: '30', city: 'New York' },
+        { name: 'Jane', age: '25', city: 'Boston' },
+        { name: 'Bob', age: '40', city: 'Chicago' },
+      ])
+    })
+
+    it('round-trips when columns are inferred', () => {
+      const csv = createCSV(people) // Infer: name,age,city
+      const out = parseCSV(csv)
       expect(out).toEqual([
         { name: 'John', age: '30', city: 'New York' },
         { name: 'Jane', age: '25', city: 'Boston' },

@@ -4,10 +4,33 @@
 export type CSVRow<T extends string = string> = Record<T, string>
 
 /**
- * Converts an array of objects to a comma-separated values (CSV) string
- * that contains only the `columns` specified.
+ * Options for the `createCSV` function.
+ */
+export interface CSVCreateOptions {
+  /** @default ',' */
+  delimiter?: string
+  /** @default true */
+  addHeader?: boolean
+  /** @default false */
+  quoteAll?: boolean
+  /** @default '\n' */
+  lineEnding?: string
+}
+
+/**
+ * Converts an array of objects to a comma-separated values (CSV) string.
+ *
+ * @remarks
+ * When `columns` is omitted, the function automatically infers columns by collecting
+ * the union of all keys across all objects in first-seen order. This means if different
+ * objects have different keys, all keys will be included in the CSV. Objects missing
+ * certain keys will have empty values for those columns.
+ *
+ * When `columns` is provided explicitly, only those columns are included in the output,
+ * allowing you to control column order and filter out unwanted properties.
  *
  * @example
+ * // With explicit columns
  * const data = [
  *   { name: 'John', age: '30', city: 'New York' },
  *   { name: 'Jane', age: '25', city: 'Boston' }
@@ -17,21 +40,51 @@ export type CSVRow<T extends string = string> = Record<T, string>
  * // name,age
  * // John,30
  * // Jane,25
+ *
+ * @example
+ * // With inferred columns (union of all keys in first-seen order)
+ * const rows = [
+ *   { name: 'John', age: '30' },
+ *   { name: 'Jane', city: 'Boston' },
+ * ]
+ *
+ * const csv = createCSV(rows)
+ * // name,age,city
+ * // John,30,
+ * // Jane,,Boston
  */
 export function createCSV<T extends Record<string, unknown>>(
-  data: T[],
+  data: readonly T[],
   columns: readonly (keyof T)[],
-  options: {
-    /** @default ',' */
-    delimiter?: string
-    /** @default true */
-    addHeader?: boolean
-    /** @default false */
-    quoteAll?: boolean
-    /** @default '\n' */
-    lineEnding?: string
-  } = {},
+  options?: CSVCreateOptions,
+): string
+export function createCSV<T extends Record<string, unknown>>(
+  data: readonly T[],
+  options?: CSVCreateOptions,
+): string
+export function createCSV<T extends Record<string, unknown>>(
+  data: readonly T[],
+  columnsOrOptions?: readonly (keyof T)[] | CSVCreateOptions,
+  maybeOptions: CSVCreateOptions = {},
 ): string {
+  // Discriminate arguments
+  let columns: readonly (keyof T)[]
+  let options: CSVCreateOptions
+
+  if (Array.isArray(columnsOrOptions)) {
+    columns = columnsOrOptions
+    options = maybeOptions
+  }
+  else {
+    columns = inferColumns(data)
+    options = (columnsOrOptions ?? {}) as CSVCreateOptions
+  }
+
+  // Handle empty data with no inferred columns
+  if (columns.length === 0 && data.length === 0) {
+    return ''
+  }
+
   const {
     delimiter = ',',
     addHeader = true,
@@ -52,6 +105,10 @@ export function createCSV<T extends Record<string, unknown>>(
 
   if (addHeader) {
     const header = columns.map(formatCell).join(delimiter)
+    if (rows.length === 0) {
+      return header
+    }
+
     return header + lineEnding + rows.join(lineEnding)
   }
 
@@ -267,4 +324,27 @@ export function parseCSV<Header extends string>(
         }),
       ) as CSVRow<Header>
     })
+}
+
+/**
+ * Infers column names from data by collecting the union of keys
+ * across all rows in first-seen order.
+ */
+function inferColumns<T extends Record<string, unknown>>(rows: readonly T[]): (keyof T)[] {
+  const seenColumns = new Set<string>()
+  const columns: string[] = []
+
+  for (const row of rows) {
+    if (row && typeof row === 'object') {
+      for (const columnName of Object.keys(row)) {
+        if (seenColumns.has(columnName))
+          continue
+
+        seenColumns.add(columnName)
+        columns.push(columnName)
+      }
+    }
+  }
+
+  return columns as (keyof T)[]
 }
