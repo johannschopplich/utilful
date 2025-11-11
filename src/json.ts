@@ -35,14 +35,14 @@ export function cloneJSON<T>(value: T): T {
   }
 
   if (Array.isArray(value)) {
-    return value.map(e => (typeof e !== 'object' || e === null ? e : cloneJSON(e))) as T
+    return value.map(element => (typeof element !== 'object' || element === null ? element : cloneJSON(element))) as T
   }
 
   const result: Record<string, unknown> = {}
 
-  for (const k in value) {
-    const v = value[k]
-    result[k] = typeof v !== 'object' || v === null ? v : cloneJSON(v)
+  for (const key in value) {
+    const propertyValue = value[key]
+    result[key] = typeof propertyValue !== 'object' || propertyValue === null ? propertyValue : cloneJSON(propertyValue)
   }
 
   return result as T
