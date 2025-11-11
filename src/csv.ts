@@ -1,3 +1,9 @@
+export const COMMA = ','
+export const DOUBLE_QUOTE = '"'
+export const NEWLINE = '\n'
+export const CARRIAGE_RETURN = '\r'
+export const ESCAPED_QUOTE = '""'
+
 /**
  * Represents a row in a CSV file with column names of type T.
  */
@@ -86,10 +92,10 @@ export function createCSV<T extends Record<string, unknown>>(
   }
 
   const {
-    delimiter = ',',
+    delimiter = COMMA,
     addHeader = true,
     quoteAll = false,
-    lineEnding = '\n',
+    lineEnding = NEWLINE,
   } = options
 
   if (delimiter.length !== 1) {
@@ -137,7 +143,7 @@ export function escapeCSVValue(
   } = {},
 ): string {
   const {
-    delimiter = ',',
+    delimiter = COMMA,
     quoteAll = false,
   } = options
 
@@ -148,13 +154,13 @@ export function escapeCSVValue(
   const coercedValue = String(value)
   const requiresQuoting = quoteAll
     || coercedValue.includes(delimiter)
-    || coercedValue.includes('"')
-    || coercedValue.includes('\n')
-    || coercedValue.includes('\r')
+    || coercedValue.includes(DOUBLE_QUOTE)
+    || coercedValue.includes(NEWLINE)
+    || coercedValue.includes(CARRIAGE_RETURN)
 
   if (requiresQuoting) {
     // Escape quotes and wrap the value
-    return `"${coercedValue.replaceAll('"', '""')}"`
+    return `${DOUBLE_QUOTE}${coercedValue.replaceAll(DOUBLE_QUOTE, ESCAPED_QUOTE)}${DOUBLE_QUOTE}`
   }
 
   return coercedValue
@@ -201,7 +207,7 @@ export function parseCSV<Header extends string>(
   let inQuotes = false
   let currentRowNumber = 1 // Tracks the current row being parsed (1-indexed)
 
-  const { delimiter = ',', trim = true, strict = true } = options
+  const { delimiter = COMMA, trim = true, strict = true } = options
 
   if (delimiter.length !== 1) {
     throw new RangeError(`CSV delimiter must be a single character, got "${delimiter}"`)
@@ -224,10 +230,10 @@ export function parseCSV<Header extends string>(
     const nextCharacter = i + 1 < csv.length ? csv[i + 1] : ''
 
     // Handle quotes
-    if (character === '"') {
-      if (inQuotes && nextCharacter === '"') {
+    if (character === DOUBLE_QUOTE) {
+      if (inQuotes && nextCharacter === DOUBLE_QUOTE) {
         // Escaped quote inside quotes
-        currentField += '"'
+        currentField += DOUBLE_QUOTE
         i++ // Skip the next quote
       }
       else {
@@ -240,8 +246,8 @@ export function parseCSV<Header extends string>(
       appendField()
     }
     // Handle row delimiter when not in quotes
-    else if ((character === '\n' || (character === '\r' && nextCharacter === '\n')) && !inQuotes) {
-      if (character === '\r')
+    else if ((character === NEWLINE || (character === CARRIAGE_RETURN && nextCharacter === NEWLINE)) && !inQuotes) {
+      if (character === CARRIAGE_RETURN)
         i++
 
       appendRow()
