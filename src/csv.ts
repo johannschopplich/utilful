@@ -220,9 +220,12 @@ export function parseCSV<Header extends string>(
 
   // Parse the CSV content respecting quotes
   const rows: string[][] = []
+  const rowQuotedFlags: boolean[][] = [] // Track which fields were quoted
   let currentRow: string[] = []
+  let currentRowQuotedFlags: boolean[] = []
   let currentField = ''
   let inQuotes = false
+  let isFieldQuoted = false // Tracks if the current field started with a quote
   let currentRowNumber = 1 // Tracks the current row being parsed (1-indexed)
 
   const { delimiter = COMMA, trim = true, strict = true } = options
@@ -233,13 +236,17 @@ export function parseCSV<Header extends string>(
 
   const appendField = () => {
     currentRow.push(currentField)
+    currentRowQuotedFlags.push(isFieldQuoted)
     currentField = ''
+    isFieldQuoted = false
   }
 
   const appendRow = () => {
     appendField()
     rows.push(currentRow)
+    rowQuotedFlags.push(currentRowQuotedFlags)
     currentRow = []
+    currentRowQuotedFlags = []
   }
 
   // Process character by character to handle quotes properly
@@ -247,16 +254,31 @@ export function parseCSV<Header extends string>(
     const character = csv[i]
     const nextCharacter = i + 1 < csv.length ? csv[i + 1] : ''
 
+    // Skip whitespace after closing quote until delimiter or newline (but not if it IS the delimiter)
+    if (isFieldQuoted && !inQuotes && character !== delimiter && (character === ' ' || character === '\t')) {
+      // Ignore trailing whitespace after closing quote
+      continue
+    }
+
     // Handle quotes
     if (character === DOUBLE_QUOTE) {
-      if (inQuotes && nextCharacter === DOUBLE_QUOTE) {
+      // Quote at the start of a field opens quoted mode
+      if (currentField.length === 0 && !inQuotes) {
+        inQuotes = true
+        isFieldQuoted = true
+      }
+      else if (inQuotes && nextCharacter === DOUBLE_QUOTE) {
         // Escaped quote inside quotes
         currentField += DOUBLE_QUOTE
         i++ // Skip the next quote
       }
+      else if (inQuotes) {
+        // Close quote mode
+        inQuotes = false
+      }
       else {
-        // Toggle quote mode
-        inQuotes = !inQuotes
+        // Quote in the middle of an unquoted field - treat as literal
+        currentField += character
       }
     }
     // Handle field delimiter when not in quotes
@@ -264,9 +286,11 @@ export function parseCSV<Header extends string>(
       appendField()
     }
     // Handle row delimiter when not in quotes
-    else if ((character === NEWLINE || (character === CARRIAGE_RETURN && nextCharacter === NEWLINE)) && !inQuotes) {
-      if (character === CARRIAGE_RETURN)
+    else if ((character === NEWLINE || character === CARRIAGE_RETURN) && !inQuotes) {
+      // Skip CRLF pairs
+      if (character === CARRIAGE_RETURN && nextCharacter === NEWLINE) {
         i++
+      }
 
       appendRow()
       currentRowNumber++
@@ -291,10 +315,16 @@ export function parseCSV<Header extends string>(
     return []
 
   const [headerRow] = rows
+  const [headerRowQuotedFlags] = rowQuotedFlags
   if (!headerRow)
     return []
 
-  const headers = trim ? headerRow.map(h => h.trim()) : headerRow
+  const headers = trim
+    ? headerRow.map((h, i) => {
+      // Don't trim quoted headers
+        return headerRowQuotedFlags && headerRowQuotedFlags[i] ? h : h.trim()
+      })
+    : headerRow
 
   // Validate headers
   const headersWithEmptyNames = headers.filter(h => h.length === 0)
@@ -320,15 +350,26 @@ export function parseCSV<Header extends string>(
   }
 
   const isFieldPopulated = trim
-    ? (field: string) => field.trim().length > 0
+    ? (field: string, wasQuoted: boolean) => wasQuoted ? field.length > 0 : field.trim().length > 0
     : (field: string) => field.length > 0
 
-  return rows.slice(1)
-    .filter(row => row.length > 1 || row.some(isFieldPopulated))
-    .map((fieldValues, rowIndex) => {
+  const dataRows = rows.slice(1)
+  const dataRowQuotedFlags = rowQuotedFlags.slice(1)
+
+  return dataRows
+    .map((row, idx) => ({ row, quotedFlags: dataRowQuotedFlags[idx] ?? [], rowIndex: idx }))
+    .filter(({ row, quotedFlags }) =>
+      row.length > 1 || row.some((field, fieldIdx) =>
+        isFieldPopulated(field, quotedFlags[fieldIdx] ?? false),
+      ),
+    )
+    .map(({ row: fieldValues, quotedFlags, rowIndex }) => {
       if (fieldValues.length > headers.length) {
         const fieldsExceedingHeaders = fieldValues.slice(headers.length)
-        const containsNonEmptyOverflow = fieldsExceedingHeaders.some(isFieldPopulated)
+        const excessQuotedFlags = quotedFlags.slice(headers.length)
+        const containsNonEmptyOverflow = fieldsExceedingHeaders.some((field, idx) =>
+          isFieldPopulated(field, excessQuotedFlags[idx] ?? false),
+        )
 
         if (strict && containsNonEmptyOverflow) {
           const expectedCount = headers.length
@@ -343,7 +384,9 @@ export function parseCSV<Header extends string>(
       return Object.fromEntries(
         headers.map((header, columnIndex) => {
           const untrimmedValue = columnIndex < fieldValues.length ? fieldValues[columnIndex] ?? '' : ''
-          const value = trim ? untrimmedValue.trim() : untrimmedValue
+          const wasQuoted = quotedFlags[columnIndex] ?? false
+          // Don't trim quoted fields
+          const value = trim && !wasQuoted ? untrimmedValue.trim() : untrimmedValue
           return [header, value]
         }),
       ) as CSVRow<Header>
