@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createCSV, escapeCSVValue, parseCSV } from './csv'
+import { createCSV, createCSVAsync, createCSVStream, escapeCSVValue, parseCSV, parseCSVStream } from './csv'
 
 describe('csv', () => {
   // Common fixtures
@@ -244,8 +244,8 @@ describe('csv', () => {
       const csv = `
 name,notes
 a,"line1
-" 
-b,"line2"  
+"
+b,"line2"
 `.trim()
       expect(parseCSV(csv)).toEqual([
         { name: 'a', notes: 'line1\n' },
@@ -477,6 +477,237 @@ name,description
       ]
       const csv = createCSV(data, ['name', 'note'])
       const out = parseCSV(csv)
+      expect(out).toEqual(data)
+    })
+  })
+
+  describe('createCSVStream', () => {
+    it('creates CSV matching synchronous createCSV for simple data', async () => {
+      const csvSync = createCSV(people, ['name', 'age', 'city'])
+
+      let csvStreamed = ''
+      for await (const chunk of createCSVStream(people, ['name', 'age', 'city'])) {
+        csvStreamed += chunk
+      }
+
+      // Streaming version has trailing newline, so add one to sync version
+      expect(csvStreamed).toBe(`${csvSync}\n`)
+    })
+
+    it('handles async iterables', async () => {
+      async function* generateData() {
+        for (const person of people) {
+          yield person
+        }
+      }
+
+      let csvStreamed = ''
+      for await (const chunk of createCSVStream(generateData(), ['name', 'age'])) {
+        csvStreamed += chunk
+      }
+
+      expect(csvStreamed).toBe('name,age\nJohn,30\nJane,25\nBob,40\n')
+    })
+
+    it('supports custom delimiters and options', async () => {
+      let csvStreamed = ''
+      for await (const chunk of createCSVStream(people, ['name', 'age'], {
+        delimiter: ';',
+        quoteAll: true,
+        addHeader: false,
+      })) {
+        csvStreamed += chunk
+      }
+
+      expect(csvStreamed).toBe('"John";"30"\n"Jane";"25"\n"Bob";"40"\n')
+    })
+
+    it('properly escapes values containing special characters', async () => {
+      const data = [
+        { name: 'John "Johnny" Doe', note: 'Line 1\nLine 2' },
+        { name: 'Jane', note: 'Normal' },
+      ]
+
+      let csvStreamed = ''
+      for await (const chunk of createCSVStream(data, ['name', 'note'])) {
+        csvStreamed += chunk
+      }
+
+      const expected = `${createCSV(data, ['name', 'note'])}\n`
+      expect(csvStreamed).toBe(expected)
+    })
+  })
+
+  describe('createCSVAsync', () => {
+    it('collects stream into single string', async () => {
+      const csv = await createCSVAsync(people, ['name', 'age', 'city'])
+      const expected = `${createCSV(people, ['name', 'age', 'city'])}\n`
+      expect(csv).toBe(expected)
+    })
+
+    it('works with async iterables', async () => {
+      async function* generateData() {
+        yield { name: 'John', age: '30' }
+        yield { name: 'Jane', age: '25' }
+      }
+
+      const csv = await createCSVAsync(generateData(), ['name', 'age'])
+      expect(csv).toBe('name,age\nJohn,30\nJane,25\n')
+    })
+  })
+
+  describe('parseCSVStream', () => {
+    it('parses CSV matching synchronous parseCSV for single chunk', async () => {
+      const csv = 'name,age\nJohn,30\nJane,25\nBob,40'
+      const expected = parseCSV(csv)
+
+      const out: typeof expected = []
+      for await (const row of parseCSVStream<'name' | 'age'>([csv])) {
+        out.push(row)
+      }
+
+      expect(out).toEqual(expected)
+    })
+
+    it('handles multi-chunk input with arbitrary boundaries', async () => {
+      const csv = 'name,age\nJohn,30\nJane,25\nBob,40'
+      const chunks = ['name,age\nJo', 'hn,30\nJane,25\nB', 'ob,40']
+
+      const expected = parseCSV(csv)
+
+      const out: typeof expected = []
+      for await (const row of parseCSVStream<'name' | 'age'>(chunks)) {
+        out.push(row)
+      }
+
+      expect(out).toEqual(expected)
+    })
+
+    it('handles chunk boundaries inside quoted fields', async () => {
+      const csv = 'name,bio\n"John","Line 1\nLine 2"\n"Jane","Single line"'
+      // Split in the middle of the quoted field with newline
+      const chunks = ['name,bio\n"John","Line 1\nLi', 'ne 2"\n"Jane","Single line"']
+
+      const expected = parseCSV(csv)
+
+      const out: typeof expected = []
+      for await (const row of parseCSVStream<'name' | 'bio'>(chunks)) {
+        out.push(row)
+      }
+
+      expect(out).toEqual(expected)
+    })
+
+    it('handles chunk boundaries around CRLF pairs', async () => {
+      const csv = 'name,age\r\nJohn,30\r\nJane,25'
+      // Split between CR and LF
+      const chunks = ['name,age\r', '\nJohn,30\r\nJane,25']
+
+      const expected = parseCSV(csv)
+
+      const out: typeof expected = []
+      for await (const row of parseCSVStream<'name' | 'age'>(chunks)) {
+        out.push(row)
+      }
+
+      expect(out).toEqual(expected)
+    })
+
+    it('works with async iterables', async () => {
+      async function* generateChunks() {
+        yield 'name,age\n'
+        yield 'John,30\n'
+        yield 'Jane,25'
+      }
+
+      const out: { name: string, age: string }[] = []
+      for await (const row of parseCSVStream<'name' | 'age'>(generateChunks())) {
+        out.push(row)
+      }
+
+      expect(out).toEqual([
+        { name: 'John', age: '30' },
+        { name: 'Jane', age: '25' },
+      ])
+    })
+
+    it('supports custom delimiters and options', async () => {
+      const csv = 'name;age\nJohn;30\nJane;25'
+      const chunks = [csv]
+
+      const out: { name: string, age: string }[] = []
+      for await (const row of parseCSVStream<'name' | 'age'>(chunks, { delimiter: ';' })) {
+        out.push(row)
+      }
+
+      expect(out).toEqual([
+        { name: 'John', age: '30' },
+        { name: 'Jane', age: '25' },
+      ])
+    })
+
+    it('propagates errors from CSVParserCore', async () => {
+      const csv = 'name,age\nJohn,30,extra'
+      const chunks = [csv]
+
+      const parseStream = async () => {
+        const out: { name: string, age: string }[] = []
+        for await (const row of parseCSVStream<'name' | 'age'>(chunks)) {
+          out.push(row)
+        }
+        return out
+      }
+
+      await expect(parseStream()).rejects.toThrow(SyntaxError)
+      await expect(parseStream()).rejects.toThrow('CSV row 2 has 1 extra field(s)')
+    })
+  })
+
+  describe('round-trip: streaming encoder/parser', () => {
+    it('createCSVStream → parseCSVStream round-trips correctly', async () => {
+      const data = [
+        { name: 'John', age: '30', city: 'New York' },
+        { name: 'Jane', age: '25', city: 'Boston' },
+        { name: 'Bob', age: '40', city: 'Chicago' },
+      ]
+
+      const chunks: string[] = []
+      for await (const chunk of createCSVStream(data, ['name', 'age', 'city'])) {
+        chunks.push(chunk)
+      }
+
+      const out: typeof data = []
+      for await (const row of parseCSVStream<'name' | 'age' | 'city'>(chunks)) {
+        out.push(row)
+      }
+
+      expect(out).toEqual(data)
+    })
+
+    it('round-trips with special characters and arbitrary chunk boundaries', async () => {
+      const data = [
+        { name: 'John "Johnny" Doe', note: 'Line 1\nLine 2, with comma' },
+        { name: 'Jane', note: 'He said "Hi"' },
+      ]
+
+      // Collect from stream
+      let csvFull = ''
+      for await (const chunk of createCSVStream(data, ['name', 'note'])) {
+        csvFull += chunk
+      }
+
+      // Split at arbitrary positions
+      const chunks = [
+        csvFull.slice(0, 15),
+        csvFull.slice(15, 40),
+        csvFull.slice(40),
+      ]
+
+      const out: typeof data = []
+      for await (const row of parseCSVStream<'name' | 'note'>(chunks)) {
+        out.push(row)
+      }
+
       expect(out).toEqual(data)
     })
   })
