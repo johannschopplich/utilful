@@ -99,6 +99,15 @@ describe('csv', () => {
       expect(result).toBe('name,age\n"John\nDoe",30\nJane,"25\n26"')
     })
 
+    it('properly escapes values containing CR and CRLF newlines', () => {
+      const data = [
+        { name: 'John\rDoe', age: '30' },
+        { name: 'Jane', age: '25\r\n26' },
+      ]
+      const result = createCSV(data, ['name', 'age'])
+      expect(result).toBe('name,age\n"John\rDoe",30\nJane,"25\r\n26"')
+    })
+
     it('quotes all values when specified', () => {
       const result = createCSV(people, ['name', 'age'], { quoteAll: true })
       expect(result).toBe('"name","age"\n"John","30"\n"Jane","25"\n"Bob","40"')
@@ -215,6 +224,35 @@ describe('csv', () => {
       ])
     })
 
+    it('treats quotes inside unquoted fields as literal characters', () => {
+      const csv = 'name,remark\nJohn,He said "hello"\nJane,B" level'
+      expect(parseCSV(csv)).toEqual([
+        { name: 'John', remark: 'He said "hello"' },
+        { name: 'Jane', remark: 'B" level' },
+      ])
+    })
+
+    it('ignores whitespace between a closing quote and the following delimiter', () => {
+      const csv = 'a,b,c\r\n1,"two" ,3\r\n4,"five"  ,6'
+      expect(parseCSV(csv)).toEqual([
+        { a: '1', b: 'two', c: '3' },
+        { a: '4', b: 'five', c: '6' },
+      ])
+    })
+
+    it('ignores whitespace between a closing quote and the following newline', () => {
+      const csv = `
+name,notes
+a,"line1
+" 
+b,"line2"  
+`.trim()
+      expect(parseCSV(csv)).toEqual([
+        { name: 'a', notes: 'line1\n' },
+        { name: 'b', notes: 'line2' },
+      ])
+    })
+
     it('parses empty fields and zero-length quoted fields', () => {
       const csv = 'name,age,nick\nJohn,30,\n,25,""\n"","",'
       expect(parseCSV(csv)).toEqual([
@@ -237,10 +275,23 @@ Jane,"Single line"
       ])
     })
 
+    it('handles CR and CRLF newlines inside quoted values', () => {
+      const csv = 'name,bio\r\n"John","line1\rline2"\r\n"Jane","line1\r\nline2"'
+      expect(parseCSV(csv)).toEqual([
+        { name: 'John', bio: 'line1\rline2' },
+        { name: 'Jane', bio: 'line1\r\nline2' },
+      ])
+    })
+
     it('handles empty input and headers-only input', () => {
       expect(parseCSV()).toEqual([])
       expect(parseCSV('')).toEqual([])
       expect(parseCSV('name,age,city')).toEqual([])
+    })
+
+    it('handles headers-only input with a trailing newline', () => {
+      expect(parseCSV('name,age,city\n')).toEqual([])
+      expect(parseCSV('name,age,city\r\n')).toEqual([])
     })
 
     it('handles Windows line endings (CRLF) and mixed endings', () => {
@@ -255,6 +306,14 @@ Jane,"Single line"
         { name: 'John', age: '30' },
         { name: 'Jane', age: '25' },
         { name: 'Bob', age: '40' },
+      ])
+    })
+
+    it('handles CR-only line endings (\\r)', () => {
+      const csv = 'name,age\rJohn,30\rJane,25'
+      expect(parseCSV(csv)).toEqual([
+        { name: 'John', age: '30' },
+        { name: 'Jane', age: '25' },
       ])
     })
 
@@ -294,6 +353,22 @@ Jane,"Single line"
       ])
     })
 
+    it('fills missing trailing fields as empty strings when a row has fewer fields than headers', () => {
+      const csv = 'name,age,city\nJohn,30\nJane,25,Boston'
+      expect(parseCSV(csv)).toEqual([
+        { name: 'John', age: '30', city: '' },
+        { name: 'Jane', age: '25', city: 'Boston' },
+      ])
+    })
+
+    it('still allows fewer fields than headers when strict is true (only extra fields are forbidden)', () => {
+      const csv = 'name,age,city\nJohn,30\nJane,25,Boston'
+      expect(parseCSV(csv, { strict: true })).toEqual([
+        { name: 'John', age: '30', city: '' },
+        { name: 'Jane', age: '25', city: 'Boston' },
+      ])
+    })
+
     it.each([
       ['consecutive delimiters', 'name,age,,city\nJohn,30,,New York'],
       ['trailing delimiter', 'name,age,\nJohn,30,value'],
@@ -302,6 +377,13 @@ Jane,"Single line"
     ])('throws error for empty header: %s', (_label, csv) => {
       expect(() => parseCSV(csv)).toThrow(SyntaxError)
       expect(() => parseCSV(csv)).toThrowError(/CSV header row contains empty column name/)
+    })
+
+    it('strips UTF-8 BOM at the start of input for normal headers', () => {
+      const csv = '\uFEFFname,age\nJohn,30'
+      expect(parseCSV(csv)).toEqual([
+        { name: 'John', age: '30' },
+      ])
     })
 
     it('throws error for duplicate headers', () => {
@@ -386,6 +468,16 @@ name,description
         { name: 'Jane', age: '25', city: 'Boston' },
         { name: 'Bob', age: '40', city: 'Chicago' },
       ])
+    })
+
+    it('round-trips fields containing commas, quotes, and newlines', () => {
+      const data = [
+        { name: 'John "Johnny" Doe', note: 'Line 1\nLine 2, with comma' },
+        { name: 'Jane', note: 'He said "Hi"' },
+      ]
+      const csv = createCSV(data, ['name', 'note'])
+      const out = parseCSV(csv)
+      expect(out).toEqual(data)
     })
   })
 })
