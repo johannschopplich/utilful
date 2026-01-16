@@ -13,7 +13,6 @@ A collection of TypeScript utilities that I use across my projects.
   - [JSON](#json)
   - [Module](#module)
   - [Object](#object)
-  - [Path](#path)
   - [Result](#result)
   - [String](#string)
 
@@ -150,13 +149,7 @@ Recursively assign default properties. Simplified version based on [unjs/defu](h
 
 Recursively assigns missing properties from defaults to the source object. The source object takes precedence over defaults.
 
-**Key Features:**
-
-- **Nullish handling**: `null` and `undefined` values in source are replaced with defaults
-- **Array concatenation**: Arrays are concatenated (source + defaults)
-- **Deep merging**: Nested objects are recursively merged
-- **Type safety**: Preserves TypeScript types
-- **Prototype pollution protection**: Ignores `__proto__` and `constructor` keys
+The function replaces `null` and `undefined` values in the source with defaults, concatenates arrays (source + defaults), and recursively merges nested objects.
 
 ```ts
 type PlainObject = Record<PropertyKey, any>
@@ -358,99 +351,17 @@ Deeply applies a callback to every key-value pair in the given object, as well a
 declare function deepApply<T extends Record<any, any>>(data: T, callback: (item: T, key: keyof T, value: T[keyof T]) => void): void
 ```
 
-### Path
-
-#### `withoutLeadingSlash`
-
-Removes the leading slash from the given path if it has one.
-
-```ts
-declare function withoutLeadingSlash(path?: string): string
-```
-
-#### `withLeadingSlash`
-
-Adds a leading slash to the given path if it does not already have one.
-
-```ts
-declare function withLeadingSlash(path?: string): string
-```
-
-#### `withoutTrailingSlash`
-
-Removes the trailing slash from the given path if it has one.
-
-```ts
-declare function withoutTrailingSlash(path?: string): string
-```
-
-#### `withTrailingSlash`
-
-Adds a trailing slash to the given path if it does not already have one.
-
-```ts
-declare function withTrailingSlash(path?: string): string
-```
-
-#### `joinURL`
-
-Joins the given URL path segments, ensuring that there is only one slash between them.
-
-```ts
-declare function joinURL(...paths: (string | undefined)[]): string
-```
-
-#### `withBase`
-
-Adds the base path to the input path, if it is not already present.
-
-```ts
-declare function withBase(input?: string, base?: string): string
-```
-
-#### `withoutBase`
-
-Removes the base path from the input path, if it is present.
-
-```ts
-declare function withoutBase(input?: string, base?: string): string
-```
-
-#### `getPathname`
-
-Returns the pathname of the given path, which is the path without the query string.
-
-```ts
-declare function getPathname(path?: string): string
-```
-
-#### `withQuery`
-
-Returns the URL with the given query parameters. If a query parameter is undefined, it is omitted.
-
-```ts
-declare function withQuery(input: string, query?: QueryObject): string
-```
-
-**Example:**
-
-```ts
-import { withQuery } from 'utilful'
-
-const url = withQuery('https://example.com', {
-  foo: 'bar',
-  // This key is omitted
-  baz: undefined,
-  // Object values are stringified
-  baz: { qux: 'quux' }
-})
-```
-
 ### Result
 
-The `Result` type that represents either success (`Ok`) or failure (`Err`). It helps to handle errors in a more explicit and type-safe way, without relying on exceptions.
+The `Result` type represents either success (`Ok`) or failure (`Err`). It provides a type-safe way to handle errors without relying on exceptions.
 
-A common use case for `Result` is error handling in functions that might fail. Here's an example of a function that divides two numbers and returns a `Result`:
+```ts
+type Result<T, E> = Ok<T, E> | Err<T, E>
+```
+
+Both `Ok` and `Err` carry phantom types for proper type inference in unions.
+
+**Basic example:**
 
 ```ts
 import { err, ok } from 'utilful'
@@ -469,80 +380,141 @@ else
   console.error('Error:', result.error)
 ```
 
-#### `Result`
-
-The `Result` type represents either success (`Ok`) or failure (`Err`).
+**Fluent chaining:**
 
 ```ts
-type Result<T, E> = Ok<T> | Err<E>
-```
+import { toResult } from 'utilful'
 
-#### `Ok`
-
-The `Ok` type wraps a successful value.
-
-**Example:**
-
-```ts
-const result = new Ok(42)
-```
-
-#### `Err`
-
-The `Err` type wraps an error value.
-
-**Example:**
-
-```ts
-const result = new Err('Something went wrong')
+const name = toResult(() => JSON.parse(jsonString))
+  .map(data => data.user)
+  .map(user => user.name)
+  .unwrapOr('Anonymous')
 ```
 
 #### `ok`
 
-Shorthand function to create an `Ok` result. Use it to wrap a successful value.
+Creates a successful result.
 
 ```ts
-declare function ok<T>(value: T): Ok<T>
+declare function ok<T, E = never>(value: T): Ok<T, E>
 ```
 
 #### `err`
 
-Shorthand function to create an `Err` result. Use it to wrap an error value.
+Creates an error result.
 
 ```ts
-declare function err<E extends string = string>(err: E): Err<E>
-declare function err<E = unknown>(err: E): Err<E>
+declare function err<T = never, E extends string = string>(error: E): Err<T, E>
+declare function err<T = never, E = unknown>(error: E): Err<T, E>
+```
+
+#### `isOk` / `isErr`
+
+Type guards for narrowing `Result` types.
+
+```ts
+declare function isOk<T, E>(result: Result<T, E>): result is Ok<T, E>
+declare function isErr<T, E>(result: Result<T, E>): result is Err<T, E>
+```
+
+**Example:**
+
+```ts
+const result = toResult(() => JSON.parse(str))
+if (isOk(result)) {
+  console.log(result.value) // TypeScript knows this is Ok
+}
+```
+
+#### `Result.map`
+
+Transforms the success value. No-op on `Err`.
+
+```ts
+ok(2).map(x => x * 3) // Ok(6)
+err('fail').map(x => x * 3) // Err('fail')
+```
+
+#### `Result.mapError`
+
+Transforms the error value. No-op on `Ok`.
+
+```ts
+err('fail').mapError(e => e.toUpperCase()) // Err('FAIL')
+ok(42).mapError(e => e.toUpperCase()) // Ok(42)
+```
+
+#### `Result.andThen`
+
+Chains a function that returns a `Result`. Useful for composing fallible operations.
+
+```ts
+ok(2).andThen(x => x > 0 ? ok(x) : err('negative')) // Ok(2)
+err('fail').andThen(x => ok(x * 2)) // Err('fail') - short-circuits
+```
+
+#### `Result.unwrap`
+
+Extracts the value or throws an error.
+
+```ts
+ok(42).unwrap() // 42
+err('fail').unwrap() // throws Error
+err('fail').unwrap('custom message') // throws Error('custom message')
+```
+
+#### `Result.unwrapOr`
+
+Extracts the value or returns a fallback.
+
+```ts
+ok(42).unwrapOr(0) // 42
+err('fail').unwrapOr(0) // 0
+```
+
+#### `Result.match`
+
+Pattern matches on the result.
+
+```ts
+result.match({
+  ok: value => `Success: ${value}`,
+  err: error => `Error: ${error}`,
+})
 ```
 
 #### `toResult`
 
-Wraps a function that might throw an error and returns a `Result` with the result of the function.
+Wraps a function or promise that might throw and returns a `Result`.
 
 ```ts
 declare function toResult<T, E = unknown>(fn: () => T): Result<T, E>
 declare function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
 ```
 
-#### `unwrapResult`
-
-Unwraps a `Result`, `Ok`, or `Err` value and returns the value or error in an object. If the result is an `Ok`, the object contains the value and an `undefined` error. If the result is an `Err`, the object contains an `undefined` value and the error.
-
-```ts
-declare function unwrapResult<T>(result: Ok<T>): { value: T, error: undefined }
-declare function unwrapResult<E>(result: Err<E>): { value: undefined, error: E }
-declare function unwrapResult<T, E>(result: Result<T, E>): { value: T, error: undefined } | { value: undefined, error: E }
-```
-
 **Example:**
 
 ```ts
+// Synchronous
 const result = toResult(() => JSON.parse('{"foo":"bar"}'))
-const { value, error } = unwrapResult(result)
+
+// Asynchronous
+const result = await toResult(fetch('https://api.example.com'))
+```
+
+#### `unwrapResult`
+
+Converts a `Result` to a plain object with `value` and `error` properties.
+
+```ts
+declare function unwrapResult<T, E>(result: Ok<T, E>): { value: T, error: undefined }
+declare function unwrapResult<T, E>(result: Err<T, E>): { value: undefined, error: E }
+declare function unwrapResult<T, E>(result: Result<T, E>): { value: T, error: undefined } | { value: undefined, error: E }
 ```
 
 #### `tryCatch`
 
-A simpler alternative to `toResult` + `unwrapResult`. It executes a function that might throw an error and directly returns the result in a `ResultData` format. Works with both synchronous functions and promises.
+Combines `toResult` and `unwrapResult` into one step. Executes a function and returns `{ value, error }` directly.
 
 ```ts
 declare function tryCatch<T, E = unknown>(fn: () => T): { value: T, error: undefined } | { value: undefined, error: E }
@@ -552,13 +524,11 @@ declare function tryCatch<T, E = unknown>(promise: Promise<T>): Promise<{ value:
 **Example:**
 
 ```ts
-import { tryCatch } from 'utilful'
-
-// Synchronous usage
+// Synchronous
 const { value, error } = tryCatch(() => JSON.parse('{"foo":"bar"}'))
 
-// Asynchronous usage
-const { value, error } = await tryCatch(fetch('https://api.example.com/data').then(r => r.json()))
+// Asynchronous
+const { value, error } = await tryCatch(fetch('https://api.example.com').then(r => r.json()))
 ```
 
 ### String
