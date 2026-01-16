@@ -1,18 +1,67 @@
 import { describe, expect, it } from 'vitest'
-import { joinURL, withBase, withoutBase, withoutTrailingSlash, withQuery, withTrailingSlash } from './path'
+import { getPathname, joinURL, withBase, withLeadingSlash, withoutBase, withoutLeadingSlash, withoutTrailingSlash, withQuery, withTrailingSlash } from './path'
 
 describe('path', () => {
+  describe('withoutLeadingSlash', () => {
+    const tests: Record<string, string> = {
+      '': '',
+      '/': '',
+      '/foo': 'foo',
+      'foo': 'foo',
+      '/foo/bar': 'foo/bar',
+      '//foo': '/foo',
+      '///foo': '//foo',
+    }
+
+    for (const input in tests) {
+      it(input || '(empty)', () => {
+        expect(withoutLeadingSlash(input)).toBe(tests[input])
+      })
+    }
+
+    it('falsy value', () => {
+      expect(withoutLeadingSlash()).toBe('')
+    })
+  })
+
+  describe('withLeadingSlash', () => {
+    const tests: Record<string, string> = {
+      '': '/',
+      '/': '/',
+      'foo': '/foo',
+      '/foo': '/foo',
+      'foo/bar': '/foo/bar',
+      '//foo': '//foo',
+    }
+
+    for (const input in tests) {
+      it(input || '(empty)', () => {
+        expect(withLeadingSlash(input)).toBe(tests[input])
+      })
+    }
+
+    it('falsy value', () => {
+      expect(withLeadingSlash()).toBe('/')
+    })
+  })
+
   describe('withBase', () => {
     const tests = [
+      // Empty/root base
+      { base: '', input: '/foo', out: '/foo' },
       { base: '/', input: '/', out: '/' },
+      { base: '/', input: 'https://test.com', out: 'https://test.com' },
+      // Simple base paths
       { base: '/foo', input: '', out: '/foo' },
-      { base: '/foo/', input: '/', out: '/foo' },
       { base: '/foo', input: '/bar', out: '/foo/bar' },
-      { base: '/base/', input: '/base', out: '/base' },
+      { base: '/foo/', input: '/', out: '/foo' },
+      // Base already present
       { base: '/base', input: '/base/', out: '/base/' },
       { base: '/base', input: '/base/a', out: '/base/a' },
+      { base: '/base/', input: '/base', out: '/base' },
       { base: '/base/', input: '/base/a', out: '/base/a' },
-      { base: '/', input: 'https://test.com', out: 'https://test.com' },
+      // Partial match (should NOT match)
+      { base: '/api', input: '/apiv2', out: '/api/apiv2' },
     ]
 
     for (const test of tests) {
@@ -24,20 +73,28 @@ describe('path', () => {
 
   describe('withoutBase', () => {
     const tests = [
+      // Empty/root base
+      { base: '', input: '/foo', out: '/foo' },
       { base: '/', input: '/', out: '/' },
-      { base: '/foo', input: '/', out: '/' },
-      { base: '/foo/', input: '/', out: '/' },
-      { base: '/foo', input: '/bar', out: '/bar' },
-      { base: '/base/', input: '/base', out: '/' },
-      { base: '/base', input: '/base/', out: '/' },
-      { base: '/base', input: '/base/a', out: '/a' },
-      { base: '/base/', input: '/base/a', out: '/a' },
-      { base: '/base/a/', input: '/base/a', out: '/' },
       { base: '/', input: '/test/', out: '/test/' },
       { base: '/', input: '/?test', out: '/?test' },
-      { base: '/api', input: '/api?test', out: '/?test' },
-      { base: '/base/', input: 'https://test.com', out: 'https://test.com' },
       { base: '/', input: 'https://test.com', out: 'https://test.com' },
+      // Base not present
+      { base: '/foo', input: '/', out: '/' },
+      { base: '/foo', input: '/bar', out: '/bar' },
+      { base: '/foo/', input: '/', out: '/' },
+      // Base present - strip it
+      { base: '/base', input: '/base/', out: '/' },
+      { base: '/base', input: '/base/a', out: '/a' },
+      { base: '/base/', input: '/base', out: '/' },
+      { base: '/base/', input: '/base/a', out: '/a' },
+      { base: '/base/a/', input: '/base/a', out: '/' },
+      // With query string
+      { base: '/api', input: '/api?test', out: '/?test' },
+      // Partial match (should NOT strip)
+      { base: '/api', input: '/apiv2', out: '/apiv2' },
+      // Full URLs passthrough
+      { base: '/base/', input: 'https://test.com', out: 'https://test.com' },
     ]
 
     for (const test of tests) {
@@ -49,14 +106,27 @@ describe('path', () => {
 
   describe('joinURL', () => {
     const tests = [
+      // Empty/single segment
       { input: [], out: '' },
       { input: ['/'], out: '/' },
-      { input: [undefined, './'], out: './' },
       { input: ['/a'], out: '/a' },
+      // Falsy values
+      { input: ['', 'a'], out: 'a' },
+      { input: ['a', '', 'b'], out: 'a/b' },
+      { input: ['a', undefined, 'b'], out: 'a/b' },
+      { input: [undefined, './'], out: './' },
+      // Basic joining
       { input: ['a', 'b'], out: 'a/b' },
-      { input: ['/', '/b'], out: '/b' },
       { input: ['a', 'b/', 'c'], out: 'a/b/c' },
+      // Slash handling
+      { input: ['/', '/b'], out: '/b' },
+      { input: ['/', '/', '/'], out: '/' },
+      { input: ['a', '/', 'b'], out: 'a/b' },
       { input: ['a', 'b/', '/c'], out: 'a/b/c' },
+      { input: ['a//b', 'c'], out: 'a//b/c' },
+      // Full URLs
+      { input: ['https://example.com', 'foo'], out: 'https://example.com/foo' },
+      { input: ['https://example.com/', '/foo'], out: 'https://example.com/foo' },
     ] as const
 
     for (const test of tests) {
@@ -141,16 +211,19 @@ describe('path', () => {
   describe('withTrailingSlash', () => {
     const tests: Record<string, string> = {
       '': '/',
+      '/': '/',
       'bar': 'bar/',
-      'bar#abc': 'bar#abc/',
+      'bar#abc': 'bar/#abc',
       'bar/': 'bar/',
-      'foo?123': 'foo?123/',
-      'foo/?123': 'foo/?123/',
-      'foo/?123#abc': 'foo/?123#abc/',
+      'foo?123': 'foo/?123',
+      'foo/?123': 'foo/?123',
+      'foo/?123#abc': 'foo/?123#abc',
+      'https://example.com': 'https://example.com/',
+      'https://example.com/foo': 'https://example.com/foo/',
     }
 
     for (const input in tests) {
-      it(input, () => {
+      it(input || '(empty)', () => {
         expect(withTrailingSlash(input)).toBe(tests[input])
       })
     }
@@ -166,22 +239,57 @@ describe('path', () => {
       '/': '/',
       'bar': 'bar',
       'bar#abc': 'bar#abc',
-      'bar/#abc': 'bar/#abc',
+      'bar/#abc': 'bar#abc',
       'foo?123': 'foo?123',
-      'foo/?123': 'foo/?123',
-      'foo/?123#abc': 'foo/?123#abc',
-      'foo/?k=v': 'foo/?k=v',
-      'foo/?k=/': 'foo/?k=',
+      'foo/?123': 'foo?123',
+      'foo/?123#abc': 'foo?123#abc',
+      'foo/?k=v': 'foo?k=v',
+      'foo/?k=/': 'foo?k=/',
+      'https://example.com/': 'https://example.com',
+      'https://example.com/foo/': 'https://example.com/foo',
     }
 
     for (const input in tests) {
-      it(input, () => {
+      it(input || '(empty)', () => {
         expect(withoutTrailingSlash(input)).toBe(tests[input])
       })
     }
 
     it('falsy value', () => {
       expect(withoutTrailingSlash()).toBe('/')
+    })
+  })
+
+  describe('getPathname', () => {
+    const tests: Record<string, string> = {
+      // Simple paths
+      '/': '/',
+      '/foo': '/foo',
+      '/foo/': '/foo/',
+      '/#hash': '/',
+      '/foo/#bar': '/foo/',
+      // With query string
+      '/foo?bar': '/foo',
+      '/?query#hash': '/',
+      // With hash
+      '/foo#bar': '/foo',
+      '/foo?bar#baz': '/foo',
+      // Full URLs
+      'https://example.com': '/',
+      'https://example.com/': '/',
+      'https://example.com/foo': '/foo',
+      'https://example.com/foo?bar': '/foo',
+      'https://example.com/foo#hash': '/foo',
+    }
+
+    for (const input in tests) {
+      it(input, () => {
+        expect(getPathname(input)).toBe(tests[input])
+      })
+    }
+
+    it('falsy value', () => {
+      expect(getPathname()).toBe('/')
     })
   })
 })
