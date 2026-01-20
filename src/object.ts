@@ -69,7 +69,10 @@ export function deepApply<T extends Record<any, any>>(
   }
 }
 
-function isObject(value: unknown): value is Record<any, any> {
+/**
+ * Checks if a value is a plain object.
+ */
+export function isObject(value: unknown): value is Record<any, any> {
   return Object.prototype.toString.call(value) === '[object Object]'
 }
 
