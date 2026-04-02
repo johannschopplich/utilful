@@ -104,7 +104,7 @@ export function joinURL(...paths: (string | undefined)[]): string {
     if (path === '/')
       continue
 
-    const resultHasTrailing = result[result.length - 1] === '/'
+    const resultHasTrailing = result.at(-1) === '/'
     const pathHasLeading = path[0] === '/'
 
     if (resultHasTrailing && pathHasLeading) {

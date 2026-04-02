@@ -6,6 +6,9 @@ const URL_ALPHABET = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvw
 
 // #region Template
 
+/** Regex pattern to match template placeholders in the format `{key}`. */
+export const TEMPLATE_PLACEHOLDER_RE: RegExp = /\{(\w+)\}/g
+
 /**
  * Simple template engine to replace variables in a string.
  *
@@ -20,7 +23,7 @@ export function template(
   variables: Record<string | number, any>,
   fallback?: string | ((key: string) => string),
 ): string {
-  return str.replace(/\{(\w+)\}/g, (_, key) => {
+  return str.replace(TEMPLATE_PLACEHOLDER_RE, (_, key) => {
     return variables[key] != null ? String(variables[key]) : ((typeof fallback === 'function' ? fallback(key) : fallback) ?? key)
   })
 }
