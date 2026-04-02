@@ -21,7 +21,7 @@ export function template(
   fallback?: string | ((key: string) => string),
 ): string {
   return str.replace(/\{(\w+)\}/g, (_, key) => {
-    return variables[key] || ((typeof fallback === 'function' ? fallback(key) : fallback) ?? key)
+    return variables[key] != null ? String(variables[key]) : ((typeof fallback === 'function' ? fallback(key) : fallback) ?? key)
   })
 }
 
