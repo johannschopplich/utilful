@@ -13,12 +13,11 @@ A collection of TypeScript utilities that I use across my projects.
   - [JSON](#json)
   - [Module](#module)
   - [Object](#object)
+  - [Path](#path)
   - [Result](#result)
   - [String](#string)
 
 ## Installation
-
-Run the following command to add `utilful` to your project.
 
 ```bash
 # npm
@@ -139,6 +138,90 @@ Jane,25
 `.trim()
 
 const data = parseCSV<'name' | 'age'>(csv) // [{ name: 'John', age: '30' }, { name: 'Jane', age: '25' }]
+```
+
+#### `createCSVStream`
+
+Creates a CSV stream from an iterable or async iterable of objects. Yields complete lines (header and/or data rows) including line endings – useful for large datasets that should not be buffered in memory.
+
+```ts
+declare function createCSVStream<T extends Record<string, unknown>>(
+  data: AsyncIterable<T> | Iterable<T>,
+  columns: readonly (keyof T)[],
+  options?: CSVCreateOptions
+): AsyncIterable<string>
+```
+
+**Example:**
+
+```ts
+for await (const chunk of createCSVStream(rows, ['name', 'age'])) {
+  process.stdout.write(chunk)
+}
+```
+
+#### `createCSVAsync`
+
+Convenience wrapper around `createCSVStream` that collects all chunks into a single string.
+
+> [!NOTE]
+> Unlike `createCSV`, the result has a trailing line ending.
+
+```ts
+declare function createCSVAsync<T extends Record<string, unknown>>(
+  data: AsyncIterable<T> | Iterable<T>,
+  columns: readonly (keyof T)[],
+  options?: CSVCreateOptions
+): Promise<string>
+```
+
+#### `parseCSVStream`
+
+Parses CSV data from an iterable or async iterable of string chunks, yielding rows as soon as they are complete. Chunks do not need to align with row boundaries – quotes and newlines are handled correctly across chunk boundaries.
+
+```ts
+declare function parseCSVStream<Header extends string>(
+  chunks: AsyncIterable<string> | Iterable<string>,
+  options?: {
+    /** @default ',' */
+    delimiter?: string
+    /**
+     * Trim whitespace from headers and values.
+     * @default true
+     */
+    trim?: boolean
+    /**
+     * Throw error if row has more fields than headers.
+     * @default true
+     */
+    strict?: boolean
+  }
+): AsyncIterable<CSVRow<Header>>
+```
+
+**Example:**
+
+```ts
+const chunks = ['name,age\nJo', 'hn,30\nJane,25']
+
+for await (const row of parseCSVStream<'name' | 'age'>(chunks)) {
+  console.log(row) // { name: 'John', age: '30' }, then { name: 'Jane', age: '25' }
+}
+```
+
+#### `parseCSVFromLines`
+
+Convenience wrapper around `parseCSVStream` that treats each line as a chunk. Quoted fields containing newlines still parse correctly.
+
+```ts
+declare function parseCSVFromLines<Header extends string>(
+  lines: AsyncIterable<string> | Iterable<string>,
+  options?: {
+    delimiter?: string
+    trim?: boolean
+    strict?: boolean
+  }
+): AsyncIterable<CSVRow<Header>>
 ```
 
 ### Defu
@@ -262,9 +345,9 @@ emitter.off('foo', onFoo) // Unlisten
 
 #### `tryParseJSON`
 
-Type-safe wrapper around `JSON.stringify`.
+Type-safe wrapper around `JSON.parse`.
 
-Falls back to the original value if the JSON serialization fails or the value is not a string.
+Falls back to the original value if parsing fails or the value is not a string.
 
 ```ts
 declare function tryParseJSON<T = unknown>(value: unknown): T
@@ -312,7 +395,7 @@ A simple general purpose memoizer utility.
 - Lazily computes a value when accessed
 - Auto-caches the result by overwriting the getter
 
-Useful for deferring initialization or expensive operations. Unlike a simple getter, there is no runtime overhead after the first invokation, since the getter itself is overwritten with the memoized value.
+Useful for deferring initialization or expensive operations. Unlike a simple getter, there is no runtime overhead after the first invocation, since the getter itself is overwritten with the memoized value.
 
 ```ts
 declare function memoize<T>(getter: () => T): { value: T }
@@ -321,7 +404,7 @@ declare function memoize<T>(getter: () => T): { value: T }
 **Example:**
 
 ```ts
-const myValue = lazy(() => 'Hello, World!')
+const myValue = memoize(() => 'Hello, World!')
 console.log(myValue.value) // Computes value, overwrites getter
 console.log(myValue.value) // Returns cached value
 console.log(myValue.value) // Returns cached value
@@ -349,6 +432,83 @@ Deeply applies a callback to every key-value pair in the given object, as well a
 
 ```ts
 declare function deepApply<T extends Record<any, any>>(data: T, callback: (item: T, key: keyof T, value: T[keyof T]) => void): void
+```
+
+### Path
+
+Utilities to build and normalize URL paths. All of them are also available from the `utilful/path` subpath export.
+
+#### `withoutLeadingSlash` / `withLeadingSlash`
+
+Removes or adds a leading slash.
+
+```ts
+declare function withoutLeadingSlash(path?: string): string
+declare function withLeadingSlash(path?: string): string
+```
+
+#### `withoutTrailingSlash` / `withTrailingSlash`
+
+Removes or adds a trailing slash, preserving query strings and hash fragments.
+
+```ts
+declare function withoutTrailingSlash(path?: string): string
+declare function withTrailingSlash(path?: string): string
+```
+
+#### `joinURL`
+
+Joins the given URL path segments, ensuring that there is only one slash between them.
+
+```ts
+declare function joinURL(...paths: (string | undefined)[]): string
+```
+
+**Example:**
+
+```ts
+joinURL('/api/', '/users', '42') // '/api/users/42'
+```
+
+#### `withBase` / `withoutBase`
+
+Adds or removes a base path – each is a no-op if the base is already present (or absent).
+
+```ts
+declare function withBase(input?: string, base?: string): string
+declare function withoutBase(input?: string, base?: string): string
+```
+
+**Example:**
+
+```ts
+withBase('/users', '/api') // '/api/users'
+withoutBase('/api/users', '/api') // '/users'
+```
+
+#### `getPathname`
+
+Returns the pathname of the given path – everything before the query string or hash.
+
+```ts
+declare function getPathname(path?: string): string
+```
+
+#### `withQuery`
+
+Returns the URL with the given query parameters merged in. `undefined` values remove the parameter, array values append one entry per item, and object values are JSON-stringified.
+
+```ts
+type QueryValue = string | number | boolean | QueryValue[] | Record<string, any> | null | undefined
+type QueryObject = Record<string, QueryValue | QueryValue[]>
+
+declare function withQuery(input: string, query?: QueryObject): string
+```
+
+**Example:**
+
+```ts
+withQuery('/api/users', { page: 2, tags: ['a', 'b'] }) // '/api/users?page=2&tags=a&tags=b'
 ```
 
 ### Result
