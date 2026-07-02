@@ -6,10 +6,10 @@
  * - Auto-caches the result by overwriting the getter
  *
  * @remarks
- * Useful for deferring initialization or expensive operations. Unlike a simple getter, there is no runtime overhead after the first invokation, since the getter itself is overwritten with the memoized value.
+ * Useful for deferring initialization or expensive operations. Unlike a simple getter, there is no runtime overhead after the first invocation, since the getter itself is overwritten with the memoized value.
  *
  * @example
- * const myValue = lazy(() => 'Hello, World!')
+ * const myValue = memoize(() => 'Hello, World!')
  * console.log(myValue.value) // Computes value, overwrites getter
  * console.log(myValue.value) // Returns cached value
  * console.log(myValue.value) // Returns cached value
