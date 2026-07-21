@@ -60,6 +60,9 @@ describe('path', () => {
       { base: '/base', input: '/base/a', out: '/base/a' },
       { base: '/base/', input: '/base', out: '/base' },
       { base: '/base/', input: '/base/a', out: '/base/a' },
+      // Base followed by query or hash
+      { base: '/base', input: '/base?q=1', out: '/base?q=1' },
+      { base: '/base', input: '/base#hash', out: '/base#hash' },
       // Partial match (should NOT match)
       { base: '/api', input: '/apiv2', out: '/api/apiv2' },
     ]
@@ -91,6 +94,8 @@ describe('path', () => {
       { base: '/base/a/', input: '/base/a', out: '/' },
       // With query string
       { base: '/api', input: '/api?test', out: '/?test' },
+      // With hash
+      { base: '/api', input: '/api#hash', out: '/#hash' },
       // Partial match (should NOT strip)
       { base: '/api', input: '/apiv2', out: '/apiv2' },
       // Full URLs passthrough
@@ -280,6 +285,12 @@ describe('path', () => {
       'https://example.com/foo': '/foo',
       'https://example.com/foo?bar': '/foo',
       'https://example.com/foo#hash': '/foo',
+      // Relative paths and non-URL schemes are sliced, not URL-parsed
+      'foo': 'foo',
+      'foo?bar': 'foo',
+      'foo#hash': 'foo',
+      '../foo': '../foo',
+      'mailto:someone@example.com': 'mailto:someone@example.com',
     }
 
     for (const input in tests) {

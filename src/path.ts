@@ -134,8 +134,8 @@ export function withBase(input = '', base = ''): string {
 
   const _base = withoutTrailingSlash(base)
 
-  // Check if input starts with base followed by / or end of string
-  if (input.startsWith(_base) && (input.length === _base.length || input[_base.length] === '/' || input[_base.length] === '?'))
+  // Check if input starts with base followed by /, ?, # or end of string
+  if (input.startsWith(_base) && (input.length === _base.length || input[_base.length] === '/' || input[_base.length] === '?' || input[_base.length] === '#'))
     return input
 
   return joinURL(_base, input)
@@ -150,8 +150,8 @@ export function withoutBase(input = '', base = ''): string {
 
   const _base = withoutTrailingSlash(base)
 
-  // Check if input starts with base followed by / or end of string
-  if (!input.startsWith(_base) || (input.length !== _base.length && input[_base.length] !== '/' && input[_base.length] !== '?'))
+  // Check if input starts with base followed by /, ?, # or end of string
+  if (!input.startsWith(_base) || (input.length !== _base.length && input[_base.length] !== '/' && input[_base.length] !== '?' && input[_base.length] !== '#'))
     return input
 
   const trimmed = input.slice(_base.length)
@@ -162,12 +162,18 @@ export function withoutBase(input = '', base = ''): string {
 
 // #region Query string manipulation
 
+const URL_SCHEME_RE = /^[a-z][\w+.-]*:\/\//i
+
 /**
  * Returns the pathname of the given path, which is the path without the query string or hash.
+ *
+ * @remarks
+ * Absolute URLs (with a scheme, e.g. `https://example.com/foo`) return the URL's pathname.
+ * All other inputs are returned unchanged with the query string and hash removed.
  */
 export function getPathname(path = '/'): string {
-  if (!path.startsWith('/')) {
-    return new URL(path, 'http://localhost').pathname
+  if (URL_SCHEME_RE.test(path)) {
+    return new URL(path).pathname
   }
 
   let pathEnd = path.length
