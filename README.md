@@ -16,7 +16,6 @@ A collection of TypeScript utilities that I use across my projects.
   - [Path](#path)
   - [Result](#result)
   - [String](#string)
-  - [Types](#types)
 
 ## Installation
 
@@ -732,43 +731,6 @@ Generates a random string. The function is ported from [`nanoid`](https://github
 
 ```ts
 declare function generateRandomId(size?: number, dict?: string): string
-```
-
-### Types
-
-Type helpers, also available from the `utilful/types` subpath export.
-
-#### `LooseAutocomplete`
-
-Union of a string literal type and `string` that keeps editor autocompletion for the literals while accepting any string. `AutocompletableString` is the underlying `string & {}` building block.
-
-```ts
-type AutocompletableString = string & {}
-type LooseAutocomplete<T extends string> = T | AutocompletableString
-
-type Fruit = LooseAutocomplete<'apple' | 'banana'>
-// Autocompletes 'apple' and 'banana', but accepts any string
-```
-
-#### `UnifyIntersection`
-
-Flattens an intersection type into a single object type for readable hovers. Also commonly referred to as `Prettify`.
-
-```ts
-type UnifyIntersection<T> = { [K in keyof T]: T[K] } & {}
-
-type Merged = UnifyIntersection<{ a: string } & { b: number }>
-// { a: string, b: number }
-```
-
-#### `BrandedType`
-
-Creates a nominal (branded) type from a base type, so values must be explicitly cast to qualify.
-
-```ts
-type BrandedType<T, B> = T & { [brand]: B }
-
-type UserId = BrandedType<string, 'UserId'>
 ```
 
 ## License
