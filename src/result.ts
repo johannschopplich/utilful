@@ -128,6 +128,14 @@ export function isErr<T, E>(result: Result<T, E>): result is Err<T, E> {
 
 // #region Result conversion
 
+/**
+ * Wraps a function call or promise in a `Result`.
+ *
+ * @remarks
+ * The function overload must be synchronous. For asynchronous work, pass the
+ * promise itself (e.g. `toResult(fn())`) – a function returning a promise
+ * throws a `TypeError`, since its rejection could not be captured as `Err`.
+ */
 export function toResult<T, E = unknown>(fn: () => T): Result<T, E>
 export function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
 export function toResult<T, E = unknown>(fnOrPromise: (() => T) | Promise<T>): Result<T, E> | Promise<Result<T, E>> {
@@ -135,12 +143,19 @@ export function toResult<T, E = unknown>(fnOrPromise: (() => T) | Promise<T>): R
     return fnOrPromise.then(ok).catch(err as (error: unknown) => Err<T, E>)
   }
 
+  let value: T
   try {
-    return ok(fnOrPromise())
+    value = fnOrPromise()
   }
   catch (error) {
     return err(error as E)
   }
+
+  if (value instanceof Promise) {
+    throw new TypeError('[toResult] The function returned a promise. Pass the promise itself instead, e.g. toResult(fn())')
+  }
+
+  return ok(value)
 }
 
 export function unwrapResult<T, E>(result: Ok<T, E>): OkData<T>

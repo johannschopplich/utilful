@@ -234,6 +234,11 @@ describe('result', () => {
       expect(result.error.message).toBe('test')
     })
 
+    it('throws a TypeError when the function returns a promise', () => {
+      expect(() => toResult(() => Promise.resolve(1))).toThrow(TypeError)
+      expect(() => toResult(() => Promise.resolve(1))).toThrow(/Pass the promise itself/)
+    })
+
     it('allows JSON parsing with type inference', () => {
       const result = toResult<{ test: number }>(() => JSON.parse('{"test": 1}'))
       assertOk(result)
@@ -284,6 +289,10 @@ describe('result', () => {
       const errorResult = await tryCatch(Promise.reject(new Error('test')))
       expect(errorResult.value).toBeUndefined()
       expect(errorResult.error).toBeInstanceOf(Error)
+    })
+
+    it('throws a TypeError when the function returns a promise', () => {
+      expect(() => tryCatch(() => Promise.resolve(1))).toThrow(TypeError)
     })
   })
 
