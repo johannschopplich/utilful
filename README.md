@@ -16,6 +16,7 @@ A collection of TypeScript utilities that I use across my projects.
   - [Path](#path)
   - [Result](#result)
   - [String](#string)
+  - [Types](#types)
 
 ## Installation
 
@@ -104,29 +105,33 @@ const csv = createCSV(rows)
 Parses a comma-separated values (CSV) string into an array of objects.
 
 > [!NOTE]
-> The first row of the CSV string is used as the header row.
+> The first row of the CSV string is used as the header row. A leading UTF-8 byte order mark is stripped.
 
 ```ts
 type CSVRow<T extends string = string> = Record<T, string>
 
+interface CSVParseOptions {
+  /** @default ',' */
+  delimiter?: string
+  /**
+   * Trim whitespace from unquoted headers and values.
+   * @default false
+   */
+  trim?: boolean
+  /**
+   * Throw if a row's field count does not match the header row.
+   * @default true
+   */
+  strict?: boolean
+}
+
 declare function parseCSV<Header extends string>(
   csv?: string | null | undefined,
-  options?: {
-    /** @default ',' */
-    delimiter?: string
-    /**
-     * Trim whitespace from headers and values.
-     * @default true
-     */
-    trim?: boolean
-    /**
-     * Throw error if row has more fields than headers.
-     * @default true
-     */
-    strict?: boolean
-  }
+  options?: CSVParseOptions
 ): CSVRow<Header>[]
 ```
+
+The parser accepts a few lenient deviations from RFC 4180: LF, CR, and CRLF line endings are all recognized, whitespace between a closing quote and the next delimiter or line break is ignored, and quotes inside unquoted fields are kept as literal characters (a field only counts as quoted if it starts with a quote).
 
 **Example:**
 
@@ -182,20 +187,7 @@ Parses CSV data from an iterable or async iterable of string chunks, yielding ro
 ```ts
 declare function parseCSVStream<Header extends string>(
   chunks: AsyncIterable<string> | Iterable<string>,
-  options?: {
-    /** @default ',' */
-    delimiter?: string
-    /**
-     * Trim whitespace from headers and values.
-     * @default true
-     */
-    trim?: boolean
-    /**
-     * Throw error if row has more fields than headers.
-     * @default true
-     */
-    strict?: boolean
-  }
+  options?: CSVParseOptions
 ): AsyncIterable<CSVRow<Header>>
 ```
 
@@ -209,19 +201,30 @@ for await (const row of parseCSVStream<'name' | 'age'>(chunks)) {
 }
 ```
 
-#### `parseCSVFromLines`
+> [!TIP]
+> `parseCSVStream` accepts any iterable of strings, including an array of lines.
 
-Convenience wrapper around `parseCSVStream` that treats each line as a chunk. Quoted fields containing newlines still parse correctly.
+#### `escapeCSVValue`
+
+Escapes a single value for a CSV string. Returns an empty string for `null` and `undefined`. Values containing delimiters, quotes, or line breaks are quoted; embedded quotes are doubled.
 
 ```ts
-declare function parseCSVFromLines<Header extends string>(
-  lines: AsyncIterable<string> | Iterable<string>,
+declare function escapeCSVValue(
+  value: unknown,
   options?: {
+    /** @default ',' */
     delimiter?: string
-    trim?: boolean
-    strict?: boolean
+    /** @default false */
+    quoteAll?: boolean
   }
-): AsyncIterable<CSVRow<Header>>
+): string
+```
+
+**Example:**
+
+```ts
+escapeCSVValue('hello, world') // '"hello, world"'
+escapeCSVValue('contains "quotes"') // '"contains ""quotes"""'
 ```
 
 ### Defu
@@ -237,10 +240,17 @@ The function replaces `null` and `undefined` values in the source with defaults,
 ```ts
 type PlainObject = Record<PropertyKey, any>
 
-declare function defu<T extends PlainObject>(
-  source: T,
-  ...defaults: PlainObject[]
-): T
+declare function defu<Source extends PlainObject, Defaults extends PlainObject[]>(
+  source: Source,
+  ...defaults: Defaults
+): Defu<Source, Defaults>
+```
+
+The return type is a deep merge of the source over the defaults, so keys that only exist in the defaults are part of the result type:
+
+```ts
+const result = defu({ a: 1 }, { b: 2 })
+result.b // number – no cast needed
 ```
 
 **Example:**
@@ -353,17 +363,6 @@ Falls back to the original value if parsing fails or the value is not a string.
 declare function tryParseJSON<T = unknown>(value: unknown): T
 ```
 
-#### `cloneJSON`
-
-Clones the given JSON value.
-
-> [!NOTE]
-> The value must not contain circular references as JSON does not support them. It also must contain JSON serializable values.
-
-```ts
-declare function cloneJSON<T>(value: T): T
-```
-
 ### Module
 
 #### `interopDefault`
@@ -415,7 +414,7 @@ console.log(myValue.value) // Returns cached value
 Strictly typed `Object.keys`.
 
 ```ts
-declare function objectKeys<T extends Record<any, any>>(obj: T): Array<`${keyof T & (string | number | boolean | null | undefined)}`>
+declare function objectKeys<T extends Record<any, any>>(obj: T): Array<`${Extract<keyof T, string | number>}`>
 ```
 
 #### `objectEntries`
@@ -428,10 +427,18 @@ declare function objectEntries<T extends Record<any, any>>(obj: T): Array<[keyof
 
 #### `deepApply`
 
-Deeply applies a callback to every key-value pair in the given object, as well as nested objects and arrays.
+Deeply applies a callback to every key-value pair in the given object, as well as nested objects and arrays (including arrays nested inside arrays).
 
 ```ts
 declare function deepApply<T extends Record<any, any>>(data: T, callback: (item: T, key: keyof T, value: T[keyof T]) => void): void
+```
+
+#### `isObject`
+
+Checks if a value is an object with the plain `[object Object]` tag. Returns `true` for object literals, class instances, and `null`-prototype objects.
+
+```ts
+declare function isObject(value: unknown): value is Record<any, any>
 ```
 
 ### Path
@@ -488,7 +495,7 @@ withoutBase('/api/users', '/api') // '/users'
 
 #### `getPathname`
 
-Returns the pathname of the given path – everything before the query string or hash.
+Returns the pathname of the given path – everything before the query string or hash. Absolute URLs (with a scheme, e.g. `https://example.com/foo`) return the URL's pathname; all other inputs are returned unchanged with the query string and hash removed.
 
 ```ts
 declare function getPathname(path?: string): string
@@ -652,6 +659,9 @@ declare function toResult<T, E = unknown>(fn: () => T): Result<T, E>
 declare function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
 ```
 
+> [!NOTE]
+> The function overload must be synchronous. For asynchronous work, pass the promise itself – a function returning a promise throws a `TypeError`, since its rejection could not be captured as `Err`.
+
 **Example:**
 
 ```ts
@@ -722,6 +732,43 @@ Generates a random string. The function is ported from [`nanoid`](https://github
 
 ```ts
 declare function generateRandomId(size?: number, dict?: string): string
+```
+
+### Types
+
+Type helpers, also available from the `utilful/types` subpath export.
+
+#### `LooseAutocomplete`
+
+Union of a string literal type and `string` that keeps editor autocompletion for the literals while accepting any string. `AutocompletableString` is the underlying `string & {}` building block.
+
+```ts
+type AutocompletableString = string & {}
+type LooseAutocomplete<T extends string> = T | AutocompletableString
+
+type Fruit = LooseAutocomplete<'apple' | 'banana'>
+// Autocompletes 'apple' and 'banana', but accepts any string
+```
+
+#### `UnifyIntersection`
+
+Flattens an intersection type into a single object type for readable hovers. Also commonly referred to as `Prettify`.
+
+```ts
+type UnifyIntersection<T> = { [K in keyof T]: T[K] } & {}
+
+type Merged = UnifyIntersection<{ a: string } & { b: number }>
+// { a: string, b: number }
+```
+
+#### `BrandedType`
+
+Creates a nominal (branded) type from a base type, so values must be explicitly cast to qualify.
+
+```ts
+type BrandedType<T, B> = T & { [brand]: B }
+
+type UserId = BrandedType<string, 'UserId'>
 ```
 
 ## License
