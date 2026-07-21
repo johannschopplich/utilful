@@ -12,12 +12,42 @@ export type DefuMerger<T extends PlainObject = PlainObject> = (
 ) => boolean | void
 
 /**
+ * Deeply merged result type of a source object over a list of defaults.
+ */
+export type Defu<Source, Defaults extends any[]> = Defaults extends [infer First, ...infer Rest]
+  ? Defu<MergedObject<Source, First>, Rest>
+  : Source
+
+type MergedObject<Source, Defaults> = Source extends PlainObject
+  ? Defaults extends PlainObject
+    ? {
+        [Key in keyof Source | keyof Defaults]: MergedValue<
+          Key extends keyof Source ? Source[Key] : undefined,
+          Key extends keyof Defaults ? Defaults[Key] : undefined
+        >
+      }
+    : Source
+  : Source
+
+type MergedValue<SourceValue, DefaultValue> = SourceValue extends null | undefined
+  ? DefaultValue
+  : SourceValue extends any[]
+    ? DefaultValue extends any[]
+      ? Array<SourceValue[number] | DefaultValue[number]>
+      : SourceValue
+    : SourceValue extends (...args: any[]) => any
+      ? SourceValue
+      : SourceValue extends PlainObject
+        ? MergedObject<SourceValue, DefaultValue>
+        : SourceValue
+
+/**
  * Defu function type that accepts a source and multiple defaults
  */
-export type DefuFn = <T extends PlainObject>(
-  source: T,
-  ...defaults: PlainObject[]
-) => T
+export type DefuFn = <Source extends PlainObject, Defaults extends PlainObject[]>(
+  source: Source,
+  ...defaults: Defaults
+) => Defu<Source, Defaults>
 
 // #endregion
 
@@ -29,12 +59,12 @@ export type DefuFn = <T extends PlainObject>(
 export function createDefu(
   merger?: DefuMerger,
 ): DefuFn {
-  return (source, ...defaults) => {
+  return ((source: PlainObject, ...defaults: PlainObject[]) => {
     return defaults.reduce(
-      (acc, current) => _defu(acc, current ?? {}, '', merger),
+      (mergedResult, currentDefaults) => _defu(mergedResult, currentDefaults ?? {}, '', merger),
       source ?? {},
     )
-  }
+  }) as DefuFn
 }
 
 export const defu: DefuFn = createDefu()
@@ -61,27 +91,23 @@ function _defu<T extends PlainObject>(
       continue
     }
 
-    // Skip null/undefined values - let defaults take precedence
+    // Skip null/undefined values – let defaults take precedence
     if (value == null) {
       continue
     }
 
-    // Use custom merger if provided
     if (merger?.(result, key, value, namespace)) {
       continue
     }
 
     const currentNamespace = namespace ? `${namespace}.${key}` : key
 
-    // Merge arrays by concatenation
     if (Array.isArray(value) && Array.isArray(result[key])) {
       result[key] = [...value, ...result[key]]
     }
-    // Recursively merge plain objects
     else if (isPlainObject(value) && isPlainObject(result[key])) {
       result[key] = _defu(value, result[key], currentNamespace, merger)
     }
-    // Override with source value
     else {
       result[key] = value
     }

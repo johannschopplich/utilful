@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 import { createDefu, defu } from './defu'
 
 // Part of tests brought from jonschlinkert/defaults-deep (MIT)
@@ -95,6 +95,26 @@ describe('defu', () => {
     defu(payload, payload)
     // @ts-expect-error: Property does not exist
     expect({}.isAdmin).toBe(undefined)
+  })
+
+  it('should not pollute prototype via __proto__ key', () => {
+    const payload = JSON.parse('{"__proto__": {"isAdmin": true}, "a": 1}')
+    const result = defu(payload, {}) as Record<string, unknown>
+    expect(Object.keys(result)).toEqual(['a'])
+    // @ts-expect-error: Property does not exist
+    expect({}.isAdmin).toBe(undefined)
+  })
+
+  it('should expose keys that only exist in defaults on the merged type', () => {
+    const result = defu({ a: 1 }, { b: 2 })
+    expect(result.b).toBe(2)
+    expectTypeOf(result.a).toEqualTypeOf<number>()
+    expectTypeOf(result.b).toEqualTypeOf<number>()
+
+    const nested = defu({ a: { b: 'c' } }, { a: { d: 'e' } })
+    expect(nested.a.d).toBe('e')
+    expectTypeOf(nested.a.b).toEqualTypeOf<string>()
+    expectTypeOf(nested.a.d).toEqualTypeOf<string>()
   })
 
   it('should ignore non-object arguments', () => {
