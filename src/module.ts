@@ -8,7 +8,16 @@
  */
 export async function interopDefault<T>(m: T | Promise<T>): Promise<T extends { default: infer U } ? U : T> {
   const resolved = await m
-  return (resolved as any).default || resolved
+
+  if (
+    resolved != null
+    && (typeof resolved === 'object' || typeof resolved === 'function')
+    && 'default' in resolved
+  ) {
+    return (resolved as any).default
+  }
+
+  return resolved as any
 }
 
 // #endregion
