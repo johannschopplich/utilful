@@ -7,6 +7,7 @@ const CARRIAGE_RETURN = '\r'
 const ESCAPED_QUOTE = '""'
 const SPACE = ' '
 const TAB = '\t'
+const BYTE_ORDER_MARK = '\uFEFF'
 
 // #endregion
 
@@ -18,7 +19,7 @@ const TAB = '\t'
 export type CSVRow<T extends string = string> = Record<T, string>
 
 /**
- * Options for the `createCSV` function.
+ * Options for the CSV creation functions.
  */
 export interface CSVCreateOptions {
   /** @default ',' */
@@ -29,6 +30,24 @@ export interface CSVCreateOptions {
   quoteAll?: boolean
   /** @default '\n' */
   lineEnding?: string
+}
+
+/**
+ * Options for the CSV parsing functions.
+ */
+export interface CSVParseOptions {
+  /** @default ',' */
+  delimiter?: string
+  /**
+   * Trim whitespace from unquoted headers and values.
+   * @default false
+   */
+  trim?: boolean
+  /**
+   * Throw if a row's field count does not match the header row.
+   * @default true
+   */
+  strict?: boolean
 }
 
 // #endregion
@@ -110,9 +129,7 @@ export function createCSV<T extends Record<string, unknown>>(
     lineEnding = NEWLINE,
   } = options
 
-  if (delimiter.length !== 1) {
-    throw new RangeError(`CSV delimiter must be a single character, got "${delimiter}"`)
-  }
+  assertValidCSVDelimiter(delimiter)
 
   if (addHeader) {
     const header = encodeCSVHeader(columns.map(String), delimiter, quoteAll)
@@ -162,9 +179,7 @@ export async function* createCSVStream<T extends Record<string, unknown>>(
     lineEnding = NEWLINE,
   } = options
 
-  if (delimiter.length !== 1) {
-    throw new RangeError(`CSV delimiter must be a single character, got "${delimiter}"`)
-  }
+  assertValidCSVDelimiter(delimiter)
 
   if (addHeader) {
     const header = encodeCSVHeader(columns.map(String), delimiter, quoteAll)
@@ -209,6 +224,16 @@ export async function createCSVAsync<T extends Record<string, unknown>>(
 // #endregion
 
 // #region Helper functions
+
+function assertValidCSVDelimiter(delimiter: string): void {
+  if (delimiter.length !== 1) {
+    throw new RangeError(`CSV delimiter must be a single character, got "${delimiter}"`)
+  }
+
+  if (delimiter === DOUBLE_QUOTE || delimiter === NEWLINE || delimiter === CARRIAGE_RETURN) {
+    throw new RangeError(`CSV delimiter must not be a quote or line break character, got ${JSON.stringify(delimiter)}`)
+  }
+}
 
 function encodeCSVHeader(
   columns: readonly string[],
@@ -294,25 +319,22 @@ class CSVParserCore<Header extends string> {
   private readonly onRow: (row: CSVRow<Header>) => void
 
   private currentRow: string[] = []
-  private currentRowQuotedFlags: boolean[] = []
   private currentField = ''
   private inQuotes = false
   private isFieldQuoted = false
   private currentRowNumber = 1
-
-  private headerRaw?: string[]
-  private headerQuotedFlags?: boolean[]
   private headers?: Header[]
 
+  private isAtInputStart = true
+  private pendingChunkTail = ''
+
   constructor(
-    options: { delimiter?: string, trim?: boolean, strict?: boolean },
+    options: CSVParseOptions,
     onRow: (row: CSVRow<Header>) => void,
   ) {
-    const { delimiter = COMMA, trim = true, strict = true } = options
+    const { delimiter = COMMA, trim = false, strict = true } = options
 
-    if (delimiter.length !== 1) {
-      throw new RangeError(`CSV delimiter must be a single character, got "${delimiter}"`)
-    }
+    assertValidCSVDelimiter(delimiter)
 
     this.delimiter = delimiter
     this.trim = trim
@@ -321,13 +343,53 @@ class CSVParserCore<Header extends string> {
   }
 
   push(chunk: string): void {
-    for (let i = 0; i < chunk.length; i++) {
-      const character = chunk[i]
-      const nextCharacter = i + 1 < chunk.length ? chunk[i + 1] : ''
+    let pendingText = this.pendingChunkTail + chunk
+    this.pendingChunkTail = ''
+
+    if (this.isAtInputStart && pendingText.length > 0) {
+      if (pendingText[0] === BYTE_ORDER_MARK) {
+        pendingText = pendingText.slice(1)
+      }
+      this.isAtInputStart = false
+    }
+
+    let holdbackIndex = pendingText.length
+    while (holdbackIndex > 0 && pendingText[holdbackIndex - 1] === DOUBLE_QUOTE)
+      holdbackIndex--
+    if (holdbackIndex === pendingText.length && holdbackIndex > 0 && pendingText[holdbackIndex - 1] === CARRIAGE_RETURN)
+      holdbackIndex--
+
+    this.pendingChunkTail = pendingText.slice(holdbackIndex)
+    this.consume(pendingText.slice(0, holdbackIndex))
+  }
+
+  finish(): void {
+    if (this.pendingChunkTail.length > 0) {
+      const chunkTail = this.pendingChunkTail
+      this.pendingChunkTail = ''
+      this.consume(chunkTail)
+    }
+
+    // Unterminated quoted field check (before processing remaining data)
+    if (this.inQuotes) {
+      throw new SyntaxError(
+        `CSV contains unterminated quoted field at row ${this.currentRowNumber}`,
+      )
+    }
+
+    // If there is leftover field/row, append it
+    if (this.currentField !== '' || this.currentRow.length > 0) {
+      this.appendRow()
+    }
+  }
+
+  private consume(text: string): void {
+    for (let i = 0; i < text.length; i++) {
+      const character = text[i]
+      const nextCharacter = i + 1 < text.length ? text[i + 1] : ''
 
       // Skip whitespace after closing quote until delimiter or newline (but not if it IS the delimiter)
       if (this.isFieldQuoted && !this.inQuotes && character !== this.delimiter && (character === SPACE || character === TAB)) {
-        // Ignore trailing whitespace after closing quote
         continue
       }
 
@@ -371,23 +433,11 @@ class CSVParserCore<Header extends string> {
     }
   }
 
-  finish(): void {
-    // Unterminated quoted field check (before processing remaining data)
-    if (this.inQuotes) {
-      throw new SyntaxError(
-        `CSV contains unterminated quoted field at row ${this.currentRowNumber}`,
-      )
-    }
-
-    // If there is leftover field/row, append it
-    if (this.currentField !== '' || this.currentRow.length > 0) {
-      this.appendRow()
-    }
-  }
-
   private appendField(): void {
-    this.currentRow.push(this.currentField)
-    this.currentRowQuotedFlags.push(this.isFieldQuoted)
+    const fieldValue = this.trim && !this.isFieldQuoted
+      ? this.currentField.trim()
+      : this.currentField
+    this.currentRow.push(fieldValue)
     this.currentField = ''
     this.isFieldQuoted = false
   }
@@ -395,49 +445,34 @@ class CSVParserCore<Header extends string> {
   private appendRow(): void {
     this.appendField()
 
-    if (!this.headerRaw) {
-      this.headerRaw = this.currentRow
-      this.headerQuotedFlags = this.currentRowQuotedFlags
-      this.processHeaderRow()
+    if (this.headers) {
+      this.processDataRow(this.currentRow, this.headers)
     }
     else {
-      this.processDataRow(this.currentRow, this.currentRowQuotedFlags)
+      this.processHeaderRow(this.currentRow)
     }
 
     this.currentRow = []
-    this.currentRowQuotedFlags = []
     this.currentRowNumber++
   }
 
-  private processHeaderRow(): void {
-    const headerRow = this.headerRaw!
-    const headerQuotedFlags = this.headerQuotedFlags ?? []
+  private processHeaderRow(headers: string[]): void {
+    const emptyHeaderPositions = headers
+      .map((header, index) => (header.length === 0 ? index + 1 : -1))
+      .filter(position => position > 0)
 
-    const headers = this.trim
-      ? headerRow.map((h, i) =>
-          headerQuotedFlags[i] ? h : h.trim(),
-        )
-      : headerRow
-
-    // Empty header validation
-    const headersWithEmptyNames = headers.filter(h => h.length === 0)
-    if (headersWithEmptyNames.length > 0) {
-      const positions = headers
-        .map((h, i) => (h.length === 0 ? i + 1 : -1))
-        .filter(i => i > 0)
-        .join(', ')
+    if (emptyHeaderPositions.length > 0) {
       throw new SyntaxError(
-        `CSV header row contains empty column name(s) at position(s): ${positions}`,
+        `CSV header row contains empty column name(s) at position(s): ${emptyHeaderPositions.join(', ')}`,
       )
     }
 
-    // Duplicate header validation
-    const headerSet = new Set<string>()
+    const seenHeaderNames = new Set<string>()
     const duplicateHeaderNames = new Set<string>()
     for (const header of headers) {
-      if (headerSet.has(header))
+      if (seenHeaderNames.has(header))
         duplicateHeaderNames.add(header)
-      else headerSet.add(header)
+      else seenHeaderNames.add(header)
     }
 
     if (duplicateHeaderNames.size > 0) {
@@ -449,60 +484,33 @@ class CSVParserCore<Header extends string> {
     this.headers = headers as Header[]
   }
 
-  private processDataRow(
-    fieldValues: string[],
-    quotedFlags: boolean[],
-  ): void {
-    if (!this.headers) {
-      throw new Error('CSVParserCore: headers not initialized')
-    }
-
-    const headers = this.headers
-
-    const isFieldPopulated = this.trim
-      ? (field: string, wasQuoted: boolean) =>
-          wasQuoted ? field.length > 0 : field.trim().length > 0
-      : (field: string) => field.length > 0
-
-    // Skip empty rows
-    const hasMultipleFields = fieldValues.length > 1
-    const hasAnyPopulatedField = fieldValues.some((field, idx) =>
-      isFieldPopulated(field, quotedFlags[idx] ?? false),
-    )
-    if (!hasMultipleFields && !hasAnyPopulatedField) {
+  private processDataRow(fieldValues: string[], headers: Header[]): void {
+    // Skip blank rows
+    if (fieldValues.length === 1 && fieldValues[0]!.length === 0) {
       return
     }
 
-    // Strict extra-field check
-    if (fieldValues.length > headers.length) {
-      const fieldsExceedingHeaders = fieldValues.slice(headers.length)
-      const excessQuotedFlags = quotedFlags.slice(headers.length)
-      const containsNonEmptyOverflow = fieldsExceedingHeaders.some((field, idx) =>
-        isFieldPopulated(field, excessQuotedFlags[idx] ?? false),
-      )
-
-      if (this.strict && containsNonEmptyOverflow) {
-        const expectedCount = headers.length
-        const actualCount = fieldValues.length
-        const excessCount = actualCount - expectedCount
+    if (this.strict) {
+      if (fieldValues.length > headers.length) {
+        // Tolerate empty overflow fields, e.g. from a trailing delimiter
+        const overflowFieldValues = fieldValues.slice(headers.length)
+        if (overflowFieldValues.some(fieldValue => fieldValue.length > 0)) {
+          throw new SyntaxError(
+            `CSV row ${this.currentRowNumber} has ${fieldValues.length - headers.length} extra field(s): expected ${headers.length} column(s), found ${fieldValues.length}`,
+          )
+        }
+      }
+      else if (fieldValues.length < headers.length) {
         throw new SyntaxError(
-          `CSV row ${this.currentRowNumber} has ${excessCount} extra field(s): expected ${expectedCount} column(s), found ${actualCount}`,
+          `CSV row ${this.currentRowNumber} has ${headers.length - fieldValues.length} missing field(s): expected ${headers.length} column(s), found ${fieldValues.length}`,
         )
       }
     }
 
-    // Build row object
-    const rowEntries: [Header, string][] = headers.map((header, columnIndex) => {
-      const untrimmedValue
-        = columnIndex < fieldValues.length ? fieldValues[columnIndex] ?? '' : ''
-      const wasQuoted = quotedFlags[columnIndex] ?? false
-      const value
-        = this.trim && !wasQuoted ? untrimmedValue.trim() : untrimmedValue
-      return [header, value]
-    })
-
-    const rowObject = Object.fromEntries(rowEntries) as CSVRow<Header>
-    this.onRow(rowObject)
+    const rowEntries = headers.map((header, columnIndex) =>
+      [header, fieldValues[columnIndex] ?? ''] as [Header, string],
+    )
+    this.onRow(Object.fromEntries(rowEntries) as CSVRow<Header>)
   }
 }
 
@@ -510,7 +518,14 @@ class CSVParserCore<Header extends string> {
  * Parses a comma-separated values (CSV) string into an array of objects.
  *
  * @remarks
- * The first row of the CSV string is used as the header row.
+ * The first row of the CSV string is used as the header row. A leading
+ * UTF-8 byte order mark is stripped.
+ *
+ * Parsing tolerances (lenient deviations from RFC 4180):
+ * - LF, CR, and CRLF line endings are all accepted
+ * - Whitespace between a closing quote and the next delimiter or line break is ignored
+ * - A field is only treated as quoted if it starts with a quote; quotes inside
+ *   unquoted fields are kept as literal characters
  *
  * @example
  * const csv = `name,age
@@ -522,20 +537,7 @@ class CSVParserCore<Header extends string> {
  */
 export function parseCSV<Header extends string>(
   csv?: string | null | undefined,
-  options: {
-    /** @default ',' */
-    delimiter?: string
-    /**
-     * Trim whitespace from headers and values.
-     * @default true
-     */
-    trim?: boolean
-    /**
-     * Throw error if row has more fields than headers.
-     * @default true
-     */
-    strict?: boolean
-  } = {},
+  options: CSVParseOptions = {},
 ): CSVRow<Header>[] {
   if (!csv?.trim())
     return []
@@ -568,11 +570,7 @@ export function parseCSV<Header extends string>(
  */
 export async function* parseCSVStream<Header extends string>(
   chunks: AsyncIterable<string> | Iterable<string>,
-  options: {
-    delimiter?: string
-    trim?: boolean
-    strict?: boolean
-  } = {},
+  options: CSVParseOptions = {},
 ): AsyncIterable<CSVRow<Header>> {
   const queue: CSVRow<Header>[] = []
 
@@ -593,35 +591,9 @@ export async function* parseCSVStream<Header extends string>(
   }
 }
 
-/**
- * Parses CSV data from an async iterable or iterable of lines.
- *
- * @remarks
- * This is a convenience wrapper around `parseCSVStream` that treats each line
- * as a chunk. Note that lines do not necessarily correspond to CSV rows due to
- * quoted fields containing newlines. The parser handles this correctly.
- *
- * @example
- * const lines = ['name,age', 'John,30', 'Jane,25']
- *
- * for await (const row of parseCSVFromLines<'name' | 'age'>(lines)) {
- *   console.log(row)
- * }
- */
-export async function* parseCSVFromLines<Header extends string>(
-  lines: AsyncIterable<string> | Iterable<string>,
-  options?: {
-    delimiter?: string
-    trim?: boolean
-    strict?: boolean
-  },
-): AsyncIterable<CSVRow<Header>> {
-  yield* parseCSVStream(lines, options)
-}
-
 // #endregion
 
-// #region Helper functions
+// #region Column inference
 
 /**
  * Infers column names from data by collecting the union of keys

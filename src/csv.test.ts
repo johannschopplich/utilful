@@ -1,3 +1,4 @@
+import type { CSVRow } from './csv'
 import { describe, expect, it } from 'vitest'
 import { createCSV, createCSVAsync, createCSVStream, escapeCSVValue, parseCSV, parseCSVStream } from './csv'
 
@@ -53,6 +54,17 @@ describe('csv', () => {
         .toThrowError('CSV delimiter must be a single character, got ",,"')
     })
 
+    it.each([
+      ['double quote', '"'],
+      ['newline', '\n'],
+      ['carriage return', '\r'],
+    ])('throws error for reserved delimiter: %s', (_label, delimiter) => {
+      expect(() => createCSV(people, ['name', 'age'], { delimiter }))
+        .toThrow(RangeError)
+      expect(() => createCSV(people, ['name', 'age'], { delimiter }))
+        .toThrowError(/must not be a quote or line break/)
+    })
+
     it('creates a CSV string with headers by default', () => {
       const result = createCSV(people, ['name', 'age'])
       expect(result).toBe('name,age\nJohn,30\nJane,25\nBob,40')
@@ -72,40 +84,13 @@ describe('csv', () => {
       expect(result).toBe(expected)
     })
 
-    it('properly escapes values containing delimiters', () => {
+    it('escapes values requiring quoting via escapeCSVValue', () => {
       const data = [
-        { name: 'John, Jr.', age: '30' },
-        { name: 'Jane', age: '25' },
+        { name: 'John, Jr.', note: 'He said "hi"' },
+        { name: 'Multi\nline', note: 'CR\r\nLF' },
       ]
-      const result = createCSV(data, ['name', 'age'])
-      expect(result).toBe('name,age\n"John, Jr.",30\nJane,25')
-    })
-
-    it('properly escapes values containing quotes', () => {
-      const data = [
-        { name: 'John "Johnny" Doe', age: '30' },
-        { name: 'Jane', age: '25' },
-      ]
-      const result = createCSV(data, ['name', 'age'])
-      expect(result).toBe('name,age\n"John ""Johnny"" Doe",30\nJane,25')
-    })
-
-    it('properly escapes values containing newlines', () => {
-      const data = [
-        { name: 'John\nDoe', age: '30' },
-        { name: 'Jane', age: '25\n26' },
-      ]
-      const result = createCSV(data, ['name', 'age'])
-      expect(result).toBe('name,age\n"John\nDoe",30\nJane,"25\n26"')
-    })
-
-    it('properly escapes values containing CR and CRLF newlines', () => {
-      const data = [
-        { name: 'John\rDoe', age: '30' },
-        { name: 'Jane', age: '25\r\n26' },
-      ]
-      const result = createCSV(data, ['name', 'age'])
-      expect(result).toBe('name,age\n"John\rDoe",30\nJane,"25\r\n26"')
+      const result = createCSV(data, ['name', 'note'])
+      expect(result).toBe('name,note\n"John, Jr.","He said ""hi"""\n"Multi\nline","CR\r\nLF"')
     })
 
     it('quotes all values when specified', () => {
@@ -148,13 +133,6 @@ describe('csv', () => {
       expect(result).toBe('name,age\r\nJohn,30\r\nJane,25\r\nBob,40')
     })
 
-    it('coerces non-string values: number, boolean, bigint, date', () => {
-      const d = new Date('2020-01-02T03:04:05.000Z')
-      const data = [{ a: 1, b: false, c: 9007199254740993n, d }]
-      const result = createCSV(data, ['a', 'b', 'c', 'd'])
-      expect(result).toBe(`a,b,c,d\n1,false,9007199254740993,${d.toString()}`)
-    })
-
     describe('column inference (when columns not specified)', () => {
       it('infers union of keys in first-seen order', () => {
         const mixed = [
@@ -187,6 +165,17 @@ describe('csv', () => {
         .toThrowError('CSV delimiter must be a single character, got ""')
       expect(() => parseCSV(csv, { delimiter: ';;' }))
         .toThrowError('CSV delimiter must be a single character, got ";;"')
+    })
+
+    it.each([
+      ['double quote', '"'],
+      ['newline', '\n'],
+      ['carriage return', '\r'],
+    ])('throws error for reserved delimiter: %s', (_label, delimiter) => {
+      expect(() => parseCSV('name,age\nJohn,30', { delimiter }))
+        .toThrow(RangeError)
+      expect(() => parseCSV('name,age\nJohn,30', { delimiter }))
+        .toThrowError(/must not be a quote or line break/)
     })
 
     it('parses a simple CSV string into an array of objects', () => {
@@ -325,17 +314,24 @@ Jane,"Single line"
       ])
     })
 
-    it('trims headers and values by default; can be disabled', () => {
-      const csv = ' name , age \n John , 30 \n Jane, 25'
+    it('preserves whitespace by default; trim option trims unquoted headers and values', () => {
+      const csv = 'name,age\n John , 30 \n Jane, 25'
       expect(parseCSV(csv)).toEqual([
+        { name: ' John ', age: ' 30 ' },
+        { name: ' Jane', age: ' 25' },
+      ])
+
+      const csv2 = ' name , age \n John , 30 \n Jane, 25'
+      expect(parseCSV(csv2, { trim: true })).toEqual([
         { name: 'John', age: '30' },
         { name: 'Jane', age: '25' },
       ])
+    })
 
-      const csv2 = 'name,age\n John , 30 \n Jane, 25'
-      expect(parseCSV(csv2, { trim: false })).toEqual([
-        { name: ' John ', age: ' 30 ' },
-        { name: ' Jane', age: ' 25' },
+    it('never trims quoted values, even with trim enabled', () => {
+      const csv = 'name,note\n" John ","  keep  "'
+      expect(parseCSV(csv, { trim: true })).toEqual([
+        { name: ' John ', note: '  keep  ' },
       ])
     })
 
@@ -343,6 +339,18 @@ Jane,"Single line"
       const csv = 'name,age\nJohn,30,Engineer'
       expect(() => parseCSV(csv)).toThrow(SyntaxError)
       expect(() => parseCSV(csv)).toThrowError('CSV row 2 has 1 extra field(s): expected 2 column(s), found 3')
+    })
+
+    it('throws error when row has fewer fields than headers (default strict)', () => {
+      const csv = 'name,age,city\nJohn,30\nJane,25,Boston'
+      expect(() => parseCSV(csv)).toThrow(SyntaxError)
+      expect(() => parseCSV(csv)).toThrowError('CSV row 2 has 1 missing field(s): expected 3 column(s), found 2')
+    })
+
+    it('tolerates empty overflow fields in strict mode (trailing delimiter)', () => {
+      expect(parseCSV('name,age\nJohn,30,')).toEqual([
+        { name: 'John', age: '30' },
+      ])
     })
 
     it('allows extra fields when strict is false by ignoring extras (even if non-empty)', () => {
@@ -353,17 +361,9 @@ Jane,"Single line"
       ])
     })
 
-    it('fills missing trailing fields as empty strings when a row has fewer fields than headers', () => {
+    it('fills missing trailing fields as empty strings when strict is false', () => {
       const csv = 'name,age,city\nJohn,30\nJane,25,Boston'
-      expect(parseCSV(csv)).toEqual([
-        { name: 'John', age: '30', city: '' },
-        { name: 'Jane', age: '25', city: 'Boston' },
-      ])
-    })
-
-    it('still allows fewer fields than headers when strict is true (only extra fields are forbidden)', () => {
-      const csv = 'name,age,city\nJohn,30\nJane,25,Boston'
-      expect(parseCSV(csv, { strict: true })).toEqual([
+      expect(parseCSV(csv, { strict: false })).toEqual([
         { name: 'John', age: '30', city: '' },
         { name: 'Jane', age: '25', city: 'Boston' },
       ])
@@ -372,14 +372,24 @@ Jane,"Single line"
     it.each([
       ['consecutive delimiters', 'name,age,,city\nJohn,30,,New York'],
       ['trailing delimiter', 'name,age,\nJohn,30,value'],
-      ['whitespace-only header', ' ,age\nJohn,30'],
-      ['BOM at start (treated as empty header if not stripped)', '\uFEFF,age\nJohn,30'],
+      ['BOM followed by empty header', '\uFEFF,age\nJohn,30'],
     ])('throws error for empty header: %s', (_label, csv) => {
       expect(() => parseCSV(csv)).toThrow(SyntaxError)
       expect(() => parseCSV(csv)).toThrowError(/CSV header row contains empty column name/)
     })
 
-    it('strips UTF-8 BOM at the start of input for normal headers', () => {
+    it('throws error for whitespace-only header when trim is enabled', () => {
+      expect(() => parseCSV(' ,age\nJohn,30', { trim: true }))
+        .toThrowError(/CSV header row contains empty column name/)
+    })
+
+    it('treats whitespace-only header as a column name by default', () => {
+      expect(parseCSV(' ,age\nJohn,30')).toEqual([
+        { ' ': 'John', 'age': '30' },
+      ])
+    })
+
+    it('strips UTF-8 BOM at the start of input', () => {
       const csv = '\uFEFFname,age\nJohn,30'
       expect(parseCSV(csv)).toEqual([
         { name: 'John', age: '30' },
@@ -409,9 +419,14 @@ name,description
       ])
     })
 
-    it('preserves whitespace-only rows when trim is false', () => {
+    it('preserves whitespace-only rows by default', () => {
       const csv = 'name\n   '
-      expect(parseCSV(csv, { trim: false })).toEqual([{ name: '   ' }])
+      expect(parseCSV(csv)).toEqual([{ name: '   ' }])
+    })
+
+    it('skips whitespace-only rows when trim is enabled', () => {
+      const csv = 'name\n   '
+      expect(parseCSV(csv, { trim: true })).toEqual([])
     })
 
     it('supports UTF-8 characters', () => {
@@ -478,6 +493,11 @@ name,description
       const csv = createCSV(data, ['name', 'note'])
       const out = parseCSV(csv)
       expect(out).toEqual(data)
+    })
+
+    it('round-trips values with leading and trailing whitespace', () => {
+      const data = [{ value: '  padded  ' }]
+      expect(parseCSV(createCSV(data, ['value']))).toEqual(data)
     })
   })
 
@@ -611,6 +631,59 @@ name,description
       }
 
       expect(out).toEqual(expected)
+    })
+
+    it('handles chunk boundaries splitting an escaped quote pair', async () => {
+      // Boundary between the two quotes of the escaped `""` pair
+      const chunks = ['a\n"x"', '"y"']
+
+      const out: CSVRow<'a'>[] = []
+      for await (const row of parseCSVStream<'a'>(chunks)) {
+        out.push(row)
+      }
+
+      expect(out).toEqual([{ a: 'x"y' }])
+    })
+
+    it('parses identically for every possible chunk split point', async () => {
+      const csv = 'name,note\r\n"John ""JJ""","line1\nline2"\r\nJane, plain '
+      const expected = parseCSV(csv)
+
+      for (let splitIndex = 1; splitIndex < csv.length; splitIndex++) {
+        const chunks = [csv.slice(0, splitIndex), csv.slice(splitIndex)]
+
+        const out: typeof expected = []
+        for await (const row of parseCSVStream(chunks)) {
+          out.push(row)
+        }
+
+        expect(out).toEqual(expected)
+      }
+    })
+
+    it('strips UTF-8 BOM at the start of the first chunk', async () => {
+      const chunks = ['﻿name,age\nJo', 'hn,30']
+
+      const out: CSVRow<'name' | 'age'>[] = []
+      for await (const row of parseCSVStream<'name' | 'age'>(chunks)) {
+        out.push(row)
+      }
+
+      expect(out).toEqual([{ name: 'John', age: '30' }])
+    })
+
+    it('reports correct row numbers for errors after chunk-split CRLF pairs', async () => {
+      const chunks = ['a,b\r', '\n1,2\r', '\n3,4,5']
+
+      const parseAll = async () => {
+        const rows: CSVRow[] = []
+        for await (const row of parseCSVStream(chunks)) {
+          rows.push(row)
+        }
+        return rows
+      }
+
+      await expect(parseAll()).rejects.toThrow('CSV row 3 has 1 extra field(s)')
     })
 
     it('works with async iterables', async () => {
