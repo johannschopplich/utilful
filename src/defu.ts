@@ -35,7 +35,9 @@ type MergedValue<SourceValue, DefaultValue> = SourceValue extends null | undefin
     ? DefaultValue extends any[]
       ? Array<SourceValue[number] | DefaultValue[number]>
       : SourceValue
-    : SourceValue extends (...args: any[]) => any
+    // Built-ins the runtime treats as opaque – `isPlainObject` rejects them,
+    // so the source value wins as-is
+    : SourceValue extends ((...args: any[]) => any) | Date | RegExp | Error | Promise<any> | Map<any, any> | Set<any>
       ? SourceValue
       : SourceValue extends PlainObject
         ? MergedObject<SourceValue, DefaultValue>

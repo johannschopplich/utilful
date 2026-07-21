@@ -55,6 +55,7 @@ describe('defu', () => {
     const date2 = new Date('2020-01-02')
     const result = defu({ date: date1 }, { date: date2 })
     expect(result).toEqual({ date: date1 })
+    expectTypeOf(result.date).toEqualTypeOf<Date>()
   })
 
   it('should correctly merge different object types', () => {
