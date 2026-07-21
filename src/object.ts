@@ -31,8 +31,8 @@ export function memoize<T>(getter: () => T): { value: T } {
 /**
  * Strictly typed `Object.keys`.
  */
-export function objectKeys<T extends Record<any, any>>(obj: T): Array<`${keyof T & (string | number | boolean | null | undefined)}`> {
-  return Object.keys(obj) as Array<`${keyof T & (string | number | boolean | null | undefined)}`>
+export function objectKeys<T extends Record<any, any>>(obj: T): Array<`${Extract<keyof T, string | number>}`> {
+  return Object.keys(obj) as Array<`${Extract<keyof T, string | number>}`>
 }
 
 /**
@@ -47,7 +47,7 @@ export function objectEntries<T extends Record<any, any>>(obj: T): Array<[keyof 
 // #region Deep apply
 
 /**
- * Deeply applies a callback to every key-value pair in the given object, as well as nested objects and arrays.
+ * Deeply applies a callback to every key-value pair in the given object, as well as nested objects and arrays (including arrays nested inside arrays).
  */
 export function deepApply<T extends Record<any, any>>(
   data: T,
@@ -55,22 +55,30 @@ export function deepApply<T extends Record<any, any>>(
 ): void {
   for (const [key, value] of Object.entries(data)) {
     callback(data, key, value)
+    applyToNestedValue(value, callback)
+  }
+}
 
-    if (Array.isArray(value)) {
-      for (const element of value) {
-        if (isObject(element)) {
-          deepApply(element, callback)
-        }
-      }
+function applyToNestedValue(
+  value: unknown,
+  callback: (item: any, key: any, value: any) => void,
+): void {
+  if (Array.isArray(value)) {
+    for (const element of value) {
+      applyToNestedValue(element, callback)
     }
-    else if (isObject(value)) {
-      deepApply(value, callback)
-    }
+  }
+  else if (isObject(value)) {
+    deepApply(value, callback)
   }
 }
 
 /**
- * Checks if a value is a plain object.
+ * Checks if a value is an object with the plain `[object Object]` tag.
+ *
+ * @remarks
+ * Returns `true` for object literals, class instances, and `null`-prototype
+ * objects – unlike stricter plain-object checks that reject class instances.
  */
 export function isObject(value: unknown): value is Record<any, any> {
   return Object.prototype.toString.call(value) === '[object Object]'
