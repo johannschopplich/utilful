@@ -49,9 +49,9 @@ describe('csv', () => {
       expect(() => createCSV(people, ['name', 'age'], { delimiter: '' }))
         .toThrow(RangeError)
       expect(() => createCSV(people, ['name', 'age'], { delimiter: '' }))
-        .toThrowError('CSV delimiter must be a single character, got ""')
+        .toThrow('CSV delimiter must be a single character, got ""')
       expect(() => createCSV(people, ['name', 'age'], { delimiter: ',,' }))
-        .toThrowError('CSV delimiter must be a single character, got ",,"')
+        .toThrow('CSV delimiter must be a single character, got ",,"')
     })
 
     it.each([
@@ -62,7 +62,7 @@ describe('csv', () => {
       expect(() => createCSV(people, ['name', 'age'], { delimiter }))
         .toThrow(RangeError)
       expect(() => createCSV(people, ['name', 'age'], { delimiter }))
-        .toThrowError(/must not be a quote or line break/)
+        .toThrow(/must not be a quote or line break/)
     })
 
     it('creates a CSV string with headers by default', () => {
@@ -162,9 +162,9 @@ describe('csv', () => {
       expect(() => parseCSV(csv, { delimiter: '' }))
         .toThrow(RangeError)
       expect(() => parseCSV(csv, { delimiter: '' }))
-        .toThrowError('CSV delimiter must be a single character, got ""')
+        .toThrow('CSV delimiter must be a single character, got ""')
       expect(() => parseCSV(csv, { delimiter: ';;' }))
-        .toThrowError('CSV delimiter must be a single character, got ";;"')
+        .toThrow('CSV delimiter must be a single character, got ";;"')
     })
 
     it.each([
@@ -175,7 +175,7 @@ describe('csv', () => {
       expect(() => parseCSV('name,age\nJohn,30', { delimiter }))
         .toThrow(RangeError)
       expect(() => parseCSV('name,age\nJohn,30', { delimiter }))
-        .toThrowError(/must not be a quote or line break/)
+        .toThrow(/must not be a quote or line break/)
     })
 
     it('parses a simple CSV string into an array of objects', () => {
@@ -338,13 +338,13 @@ Jane,"Single line"
     it('throws error when row has more fields than headers (default strict)', () => {
       const csv = 'name,age\nJohn,30,Engineer'
       expect(() => parseCSV(csv)).toThrow(SyntaxError)
-      expect(() => parseCSV(csv)).toThrowError('CSV row 2 has 1 extra field(s): expected 2 column(s), found 3')
+      expect(() => parseCSV(csv)).toThrow('CSV row 2 has 1 extra field(s): expected 2 column(s), found 3')
     })
 
     it('throws error when row has fewer fields than headers (default strict)', () => {
       const csv = 'name,age,city\nJohn,30\nJane,25,Boston'
       expect(() => parseCSV(csv)).toThrow(SyntaxError)
-      expect(() => parseCSV(csv)).toThrowError('CSV row 2 has 1 missing field(s): expected 3 column(s), found 2')
+      expect(() => parseCSV(csv)).toThrow('CSV row 2 has 1 missing field(s): expected 3 column(s), found 2')
     })
 
     it('tolerates empty overflow fields in strict mode (trailing delimiter)', () => {
@@ -375,12 +375,12 @@ Jane,"Single line"
       ['BOM followed by empty header', '\uFEFF,age\nJohn,30'],
     ])('throws error for empty header: %s', (_label, csv) => {
       expect(() => parseCSV(csv)).toThrow(SyntaxError)
-      expect(() => parseCSV(csv)).toThrowError(/CSV header row contains empty column name/)
+      expect(() => parseCSV(csv)).toThrow(/CSV header row contains empty column name/)
     })
 
     it('throws error for whitespace-only header when trim is enabled', () => {
       expect(() => parseCSV(' ,age\nJohn,30', { trim: true }))
-        .toThrowError(/CSV header row contains empty column name/)
+        .toThrow(/CSV header row contains empty column name/)
     })
 
     it('treats whitespace-only header as a column name by default', () => {
@@ -400,9 +400,9 @@ Jane,"Single line"
       expect(() => parseCSV('name,name\nJohn,Doe'))
         .toThrow(SyntaxError)
       expect(() => parseCSV('name,name\nJohn,Doe'))
-        .toThrowError('CSV header row contains duplicate column name(s): name')
+        .toThrow('CSV header row contains duplicate column name(s): name')
       expect(() => parseCSV('name,age,name,age\nJohn,30,Doe,31'))
-        .toThrowError('CSV header row contains duplicate column name(s): name, age')
+        .toThrow('CSV header row contains duplicate column name(s): name, age')
     })
 
     it('handles complex nested quotes and escaping', () => {
@@ -437,17 +437,17 @@ name,description
     it('throws error for unterminated quoted field', () => {
       const csv = 'name,age\n"John,30'
       expect(() => parseCSV(csv)).toThrow(SyntaxError)
-      expect(() => parseCSV(csv)).toThrowError('CSV contains unterminated quoted field at row 2')
+      expect(() => parseCSV(csv)).toThrow('CSV contains unterminated quoted field at row 2')
     })
 
     it('throws error for mismatched quotes in field', () => {
       const csv = 'name,age\nJohn,"30'
       expect(() => parseCSV(csv)).toThrow(SyntaxError)
-      expect(() => parseCSV(csv)).toThrowError('CSV contains unterminated quoted field at row 2')
+      expect(() => parseCSV(csv)).toThrow('CSV contains unterminated quoted field at row 2')
 
       const csv2 = 'name,age\n"John"",30'
       expect(() => parseCSV(csv2)).toThrow(SyntaxError)
-      expect(() => parseCSV(csv2)).toThrowError('CSV contains unterminated quoted field at row 2')
+      expect(() => parseCSV(csv2)).toThrow('CSV contains unterminated quoted field at row 2')
     })
   })
 
