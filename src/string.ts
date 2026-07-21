@@ -6,11 +6,14 @@ const URL_ALPHABET = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvw
 
 // #region Template
 
-/** Regex pattern to match template placeholders in the format `{key}`. */
-export const TEMPLATE_PLACEHOLDER_RE: RegExp = /\{(\w+)\}/g
+const TEMPLATE_PLACEHOLDER_RE = /\{(\w+)\}/g
 
 /**
  * Simple template engine to replace variables in a string.
+ *
+ * @remarks
+ * Only own properties of `variables` are substituted, so placeholders like
+ * `{constructor}` cannot leak prototype members.
  *
  * @example
  * const str = 'Hello, {name}!'
@@ -23,8 +26,9 @@ export function template(
   variables: Record<string | number, any>,
   fallback?: string | ((key: string) => string),
 ): string {
-  return str.replace(TEMPLATE_PLACEHOLDER_RE, (_, key) => {
-    return variables[key] != null ? String(variables[key]) : ((typeof fallback === 'function' ? fallback(key) : fallback) ?? key)
+  return str.replace(TEMPLATE_PLACEHOLDER_RE, (_, key: string) => {
+    const value = Object.hasOwn(variables, key) ? variables[key] : undefined
+    return value != null ? String(value) : ((typeof fallback === 'function' ? fallback(key) : fallback) ?? key)
   })
 }
 
