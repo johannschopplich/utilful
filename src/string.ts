@@ -6,7 +6,7 @@ const URL_ALPHABET = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvw
 
 // #region Template
 
-const TEMPLATE_PLACEHOLDER_RE = /\{(\w+)\}/g
+export const TEMPLATE_PLACEHOLDER_RE: RegExp = /\{(\w+)\}/g
 
 /**
  * Simple template engine to replace variables in a string.
