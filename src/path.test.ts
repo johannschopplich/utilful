@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getPathname, joinURL, withBase, withLeadingSlash, withoutBase, withoutLeadingSlash, withoutTrailingSlash, withQuery, withTrailingSlash } from './path'
+import { getPathname, getQuery, joinURL, withBase, withLeadingSlash, withoutBase, withoutLeadingSlash, withoutTrailingSlash, withQuery, withTrailingSlash } from './path'
 
 describe('path', () => {
   describe('withoutLeadingSlash', () => {
@@ -271,6 +271,47 @@ describe('path', () => {
 
     it('returns / for a missing input', () => {
       expect(withoutTrailingSlash()).toBe('/')
+    })
+  })
+
+  describe('getQuery', () => {
+    const tests: { input: string, out: Record<string, string | string[]> }[] = [
+      { input: '', out: {} },
+      { input: '/foo', out: {} },
+      { input: '/foo?', out: {} },
+      { input: '/foo?a=1', out: { a: '1' } },
+      { input: '/foo?a=1&b=2', out: { a: '1', b: '2' } },
+      { input: '/foo?a', out: { a: '' } },
+      { input: '/foo?a=', out: { a: '' } },
+      { input: '/foo?a=1&a=2', out: { a: ['1', '2'] } },
+      { input: '/foo?a=1&a=2&a=3', out: { a: ['1', '2', '3'] } },
+      { input: '/foo?a=1#bar', out: { a: '1' } },
+      { input: '/foo#bar?a=1', out: {} },
+      { input: '/foo?email=some+email.com', out: { email: 'some email.com' } },
+      { input: '/foo?str=%26', out: { str: '&' } },
+      { input: 'https://a.com/p?v=1#frag', out: { v: '1' } },
+    ]
+
+    for (const test of tests) {
+      it(`reads ${JSON.stringify(test.out)} from ${test.input || '(empty)'}`, () => {
+        expect(getQuery(test.input)).toEqual(test.out)
+      })
+    }
+
+    it('keeps __proto__ as an ordinary key', () => {
+      const query = getQuery('/foo?__proto__=a')
+      expect(Object.keys(query)).toEqual(['__proto__'])
+      expect(Object.getPrototypeOf(query)).toBe(Object.prototype)
+    })
+
+    it('reads keys that collide with Object.prototype members', () => {
+      expect(getQuery('/foo?constructor=x')).toEqual({ constructor: 'x' })
+      expect(getQuery('/foo?toString=x&valueOf=y')).toEqual({ toString: 'x', valueOf: 'y' })
+    })
+
+    it('round-trips the parameters written by withQuery', () => {
+      const url = withQuery('/foo#frag', { page: 2, tags: ['a', 'b'] })
+      expect(getQuery(url)).toEqual({ page: '2', tags: ['a', 'b'] })
     })
   })
 

@@ -3,6 +3,9 @@
 export type QueryValue = string | number | boolean | QueryValue[] | Record<string, any> | null | undefined
 export type QueryObject = Record<string, QueryValue | QueryValue[]>
 
+/** Query parameters as read back from a URL, where a repeated key holds all its values. */
+export type ParsedQuery = Record<string, string | string[]>
+
 // #endregion
 
 // #region Slash manipulation
@@ -246,6 +249,40 @@ export function withQuery(input: string, query?: QueryObject): string {
 
   const queryString = searchParams.toString()
   return queryString ? `${base}?${queryString}${hash}` : base + hash
+}
+
+/**
+ * Reads the query parameters of the given URL, ignoring the fragment.
+ *
+ * @remarks
+ * A parameter that appears more than once becomes an array of its values,
+ * in the order they appear. Values are percent-decoded.
+ */
+export function getQuery(input: string): ParsedQuery {
+  const { beforeHash } = splitFragment(input)
+
+  const searchIndex = beforeHash.indexOf('?')
+  if (searchIndex === -1)
+    return {}
+
+  // A null prototype keeps `__proto__` a normal key and stops inherited members
+  // such as `constructor` from passing as an already-seen value.
+  const query: ParsedQuery = Object.create(null)
+
+  for (const [key, value] of new URLSearchParams(beforeHash.slice(searchIndex + 1))) {
+    const existingValue = query[key]
+
+    if (existingValue === undefined)
+      query[key] = value
+    else if (Array.isArray(existingValue))
+      existingValue.push(value)
+    else
+      query[key] = [existingValue, value]
+  }
+
+  // Spreading defines own properties instead of assigning them, so `__proto__`
+  // survives the trip back to an ordinary object.
+  return { ...query }
 }
 
 function splitFragment(input: string): { beforeHash: string, hash: string } {
