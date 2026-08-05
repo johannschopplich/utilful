@@ -38,9 +38,12 @@ export class Ok<T, E = never> {
     return fn(this.value)
   }
 
-  /** Extracts the value. */
   unwrap(_message?: string): T {
     return this.value
+  }
+
+  unwrapErr(message?: string): never {
+    throw new Error(message ?? `unwrapErr called on Ok: ${String(this.value)}`)
   }
 
   /** Returns the value, ignoring the fallback. */
@@ -48,7 +51,6 @@ export class Ok<T, E = never> {
     return this.value
   }
 
-  /** Pattern matches on the `Result`. */
   match<R>(handlers: { ok: (value: T) => R, err: (error: E) => R }): R {
     return handlers.ok(this.value)
   }
@@ -82,9 +84,12 @@ export class Err<T, E> {
     return this as unknown as Err<U, E | E2>
   }
 
-  /** Throws an error with the given message. */
   unwrap(message?: string): never {
-    throw new Error(message ?? `Unwrap called on Err: ${String(this.error)}`)
+    throw new Error(message ?? `unwrap called on Err: ${String(this.error)}`)
+  }
+
+  unwrapErr(_message?: string): E {
+    return this.error
   }
 
   /** Returns the fallback value. */
@@ -92,7 +97,6 @@ export class Err<T, E> {
     return fallback
   }
 
-  /** Pattern matches on the `Result`. */
   match<R>(handlers: { ok: (value: T) => R, err: (error: E) => R }): R {
     return handlers.err(this.error)
   }
@@ -106,6 +110,8 @@ export function ok<T, E = never>(value: T): Ok<T, E> {
   return new Ok(value)
 }
 
+// The `string` constraint makes TypeScript infer literal error types, so
+// `err('failed')` is `Err<never, 'failed'>` rather than `Err<never, string>`.
 export function err<T = never, E extends string = string>(error: E): Err<T, E>
 export function err<T = never, E = unknown>(error: E): Err<T, E>
 export function err<T = never, E = unknown>(error: E): Err<T, E> {

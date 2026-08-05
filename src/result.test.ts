@@ -152,6 +152,29 @@ describe('result', () => {
     })
   })
 
+  describe('unwrapErr', () => {
+    it('returns error for Err', () => {
+      expect(err('fail').unwrapErr()).toBe('fail')
+    })
+
+    it('throws for Ok', () => {
+      expect(() => ok(42).unwrapErr()).toThrow()
+    })
+
+    it('throws with custom message', () => {
+      expect(() => ok(42).unwrapErr('custom message')).toThrow('custom message')
+    })
+
+    it('includes value in default message', () => {
+      expect(() => ok('my value').unwrapErr()).toThrow(/my value/)
+    })
+
+    it('narrows to the error type without a guard', () => {
+      const error = err<number, SyntaxError>(new SyntaxError('bad')).unwrapErr()
+      expectTypeOf(error).toEqualTypeOf<SyntaxError>()
+    })
+  })
+
   describe('unwrapOr', () => {
     it('returns value for Ok', () => {
       expect(ok(42).unwrapOr(0)).toBe(42)
