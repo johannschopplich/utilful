@@ -146,9 +146,14 @@ export function joinURL(...paths: (string | undefined)[]): string {
 
 /**
  * Adds the base path to the input path, if it is not already present.
+ *
+ * @remarks
+ * An absolute URL is returned as it is, since a base path cannot prefix one –
+ * whether it carries a scheme (`https://example.com/foo`) or is protocol-relative
+ * (`//example.com/foo`).
  */
 export function withBase(input = '', base = ''): string {
-  if (!base || base === '/')
+  if (!base || base === '/' || getAuthorityStart(input) !== -1)
     return input
 
   const _base = withoutTrailingSlash(base)

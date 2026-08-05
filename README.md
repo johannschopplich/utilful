@@ -494,7 +494,7 @@ joinURL('/api/', '/users', '42') // '/api/users/42'
 
 #### `withBase` / `withoutBase`
 
-Adds or removes a base path – each is a no-op if the base is already present (or absent).
+Adds or removes a base path – each is a no-op if the base is already present (or absent). An absolute URL is returned as it is, since no base path can prefix it.
 
 ```ts
 declare function withBase(input?: string, base?: string): string
@@ -505,6 +505,7 @@ declare function withoutBase(input?: string, base?: string): string
 
 ```ts
 withBase('/users', '/api') // '/api/users'
+withBase('https://example.com/users', '/api') // 'https://example.com/users'
 withoutBase('/api/users', '/api') // '/users'
 ```
 

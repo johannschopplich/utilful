@@ -130,6 +130,9 @@ describe('path', () => {
       { base: '/base', input: '/base#hash', out: '/base#hash' },
       // Partial match, which is not a match
       { base: '/api', input: '/apiv2', out: '/api/apiv2' },
+      // Absolute URLs, which no base can prefix
+      { base: '/base', input: 'https://test.com/a', out: 'https://test.com/a' },
+      { base: '/base', input: '//test.com/a', out: '//test.com/a' },
     ])('returns $input with base $base', ({ base, input, out }) => {
       expect(withBase(input, base)).toBe(out)
     })
