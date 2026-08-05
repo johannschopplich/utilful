@@ -212,12 +212,15 @@ export function withQuery(input: string, query?: QueryObject): string {
   if (!query || Object.keys(query).length === 0)
     return input
 
-  const searchIndex = input.indexOf('?')
+  // Split off the fragment first, so it cannot be swallowed by the query string.
+  const { beforeHash, hash } = splitFragment(input)
+
+  const searchIndex = beforeHash.indexOf('?')
   const hasExistingParams = searchIndex !== -1
 
-  const base = hasExistingParams ? input.slice(0, searchIndex) : input
+  const base = hasExistingParams ? beforeHash.slice(0, searchIndex) : beforeHash
   const searchParams = new URLSearchParams(
-    hasExistingParams ? input.slice(searchIndex + 1) : undefined,
+    hasExistingParams ? beforeHash.slice(searchIndex + 1) : undefined,
   )
 
   for (const [key, value] of Object.entries(query)) {
@@ -242,7 +245,15 @@ export function withQuery(input: string, query?: QueryObject): string {
   }
 
   const queryString = searchParams.toString()
-  return queryString ? `${base}?${queryString}` : base
+  return queryString ? `${base}?${queryString}${hash}` : base + hash
+}
+
+function splitFragment(input: string): { beforeHash: string, hash: string } {
+  const hashIndex = input.indexOf('#')
+
+  return hashIndex === -1
+    ? { beforeHash: input, hash: '' }
+    : { beforeHash: input.slice(0, hashIndex), hash: input.slice(hashIndex) }
 }
 
 function normalizeQueryValue(value: QueryValue): string {

@@ -204,6 +204,15 @@ describe('path', () => {
         query: { 'a': 'X', 'b[]': [], 'c': 'Y' },
         out: '/?a=X&c=Y',
       },
+
+      // The fragment stays at the end and never becomes part of the query.
+      { input: '/foo#bar', query: { page: 2 }, out: '/foo?page=2#bar' },
+      { input: '/foo?a=1#bar', query: { page: 2 }, out: '/foo?a=1&page=2#bar' },
+      { input: '/foo#bar', query: { a: undefined }, out: '/foo#bar' },
+      { input: '/foo?a=1#bar', query: { a: undefined }, out: '/foo#bar' },
+      { input: '/foo#a?b', query: { x: 1 }, out: '/foo?x=1#a?b' },
+      { input: 'https://a.com/p?v=1#frag', query: { x: 2 }, out: 'https://a.com/p?v=1&x=2#frag' },
+      { input: '/foo#', query: { x: 1 }, out: '/foo?x=1#' },
     ]
 
     for (const test of tests) {
