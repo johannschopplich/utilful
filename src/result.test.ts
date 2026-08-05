@@ -12,7 +12,7 @@ describe('result', () => {
       expectTypeOf(result).toEqualTypeOf<Ok<number, never>>()
     })
 
-    it('handles null and undefined', () => {
+    it('wraps null and undefined as values', () => {
       expect(ok(null).value).toBe(null)
       expect(ok(undefined).value).toBe(undefined)
     })
@@ -202,14 +202,14 @@ describe('result', () => {
   })
 
   describe('toResult', () => {
-    it('handles successful synchronous operations', () => {
+    it('returns Ok for a synchronous function that returns', () => {
       const result = toResult(() => 1)
       expect(result).toBeInstanceOf(Ok)
       assertOk(result)
       expect(result.value).toBe(1)
     })
 
-    it('handles failed synchronous operations', () => {
+    it('returns Err for a synchronous function that throws', () => {
       const result = toResult<never, Error>(() => {
         throw new Error('test')
       })
@@ -219,14 +219,14 @@ describe('result', () => {
       expect(result.error.message).toBe('test')
     })
 
-    it('handles successful asynchronous operations', async () => {
+    it('returns Ok for a resolved promise', async () => {
       const result = await toResult(Promise.resolve(1))
       expect(result).toBeInstanceOf(Ok)
       assertOk(result)
       expect(result.value).toBe(1)
     })
 
-    it('handles failed asynchronous operations', async () => {
+    it('returns Err for a rejected promise', async () => {
       const result = await toResult<never, Error>(Promise.reject(new Error('test')))
       expect(result).toBeInstanceOf(Err)
       assertErr(result)
@@ -245,7 +245,7 @@ describe('result', () => {
       expect(result.value).toEqual({ test: 1 })
     })
 
-    it('handles JSON parsing errors', () => {
+    it('returns Err carrying the SyntaxError from JSON.parse', () => {
       const result = toResult(() => JSON.parse('{invalid}'))
       assertErr(result)
       expect(result.error).toBeInstanceOf(SyntaxError)
@@ -282,7 +282,7 @@ describe('result', () => {
       expect(result).toEqual({ value: undefined, error })
     })
 
-    it('handles async operations', async () => {
+    it('unwraps both a resolved and a rejected promise', async () => {
       const successResult = await tryCatch(Promise.resolve(1))
       expect(successResult).toEqual({ value: 1, error: undefined })
 
@@ -297,7 +297,7 @@ describe('result', () => {
   })
 
   describe('chaining', () => {
-    it('supports fluent method chaining', () => {
+    it('applies each map in the chain to an Ok value', () => {
       const result = toResult(() => JSON.parse('{"id": 42}'))
         .map((data: { id: number }) => data.id)
         .map(id => id * 2)

@@ -113,12 +113,12 @@ interface CSVParseOptions {
   /** @default ',' */
   delimiter?: string
   /**
-   * Trim whitespace from unquoted headers and values.
+   * Whether to trim whitespace from unquoted headers and values.
    * @default false
    */
   trim?: boolean
   /**
-   * Throw if a row's field count does not match the header row.
+   * Whether to throw if a row's field count does not match the header row.
    * @default true
    */
   strict?: boolean

@@ -1,7 +1,7 @@
 // #region Interop
 
 /**
- * Interop helper for default exports.
+ * Unwraps a module's `default` export, or returns the module unchanged if it has none.
  *
  * @example
  * const mod = await interopDefault(import('./module.js'))

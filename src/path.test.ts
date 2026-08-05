@@ -14,12 +14,12 @@ describe('path', () => {
     }
 
     for (const input in tests) {
-      it(input || '(empty)', () => {
+      it(`strips the leading slash from ${input || '(empty)'}`, () => {
         expect(withoutLeadingSlash(input)).toBe(tests[input])
       })
     }
 
-    it('falsy value', () => {
+    it('returns an empty string for a missing input', () => {
       expect(withoutLeadingSlash()).toBe('')
     })
   })
@@ -35,12 +35,12 @@ describe('path', () => {
     }
 
     for (const input in tests) {
-      it(input || '(empty)', () => {
+      it(`adds a leading slash to ${input || '(empty)'}`, () => {
         expect(withLeadingSlash(input)).toBe(tests[input])
       })
     }
 
-    it('falsy value', () => {
+    it('returns / for a missing input', () => {
       expect(withLeadingSlash()).toBe('/')
     })
   })
@@ -68,7 +68,7 @@ describe('path', () => {
     ]
 
     for (const test of tests) {
-      it(`${JSON.stringify(test.base)} + ${JSON.stringify(test.input)}`, () => {
+      it(`prefixes ${JSON.stringify(test.input)} with base ${JSON.stringify(test.base)}`, () => {
         expect(withBase(test.input, test.base)).toBe(test.out)
       })
     }
@@ -103,7 +103,7 @@ describe('path', () => {
     ]
 
     for (const test of tests) {
-      it(`${JSON.stringify(test.input)}-${JSON.stringify(test.base)}`, () => {
+      it(`strips base ${JSON.stringify(test.base)} from ${JSON.stringify(test.input)}`, () => {
         expect(withoutBase(test.input, test.base)).toBe(test.out)
       })
     }
@@ -135,7 +135,7 @@ describe('path', () => {
     ] as const
 
     for (const test of tests) {
-      it(`joinURL(${test.input.map(i => JSON.stringify(i)).join(', ')}) === ${JSON.stringify(test.out)}`, () => {
+      it(`joins ${test.input.map(i => JSON.stringify(i)).join(', ')} into ${JSON.stringify(test.out)}`, () => {
         expect(joinURL(...(test.input))).toBe(test.out)
       })
     }
@@ -207,7 +207,7 @@ describe('path', () => {
     ]
 
     for (const test of tests) {
-      it(`${test.input.toString()} with ${JSON.stringify(test.query)}`, () => {
+      it(`appends ${JSON.stringify(test.query)} to ${test.input.toString()}`, () => {
         expect(withQuery(test.input, test.query)).toBe(test.out)
       })
     }
@@ -228,12 +228,12 @@ describe('path', () => {
     }
 
     for (const input in tests) {
-      it(input || '(empty)', () => {
+      it(`adds a trailing slash to ${input || '(empty)'}`, () => {
         expect(withTrailingSlash(input)).toBe(tests[input])
       })
     }
 
-    it('falsy value', () => {
+    it('returns / for a missing input', () => {
       expect(withTrailingSlash()).toBe('/')
     })
   })
@@ -255,12 +255,12 @@ describe('path', () => {
     }
 
     for (const input in tests) {
-      it(input || '(empty)', () => {
+      it(`strips the trailing slash from ${input || '(empty)'}`, () => {
         expect(withoutTrailingSlash(input)).toBe(tests[input])
       })
     }
 
-    it('falsy value', () => {
+    it('returns / for a missing input', () => {
       expect(withoutTrailingSlash()).toBe('/')
     })
   })
@@ -285,7 +285,7 @@ describe('path', () => {
       'https://example.com/foo': '/foo',
       'https://example.com/foo?bar': '/foo',
       'https://example.com/foo#hash': '/foo',
-      // Relative paths and non-URL schemes are sliced, not URL-parsed
+      // Relative paths and non-URL schemes are sliced, not URL-parsed.
       'foo': 'foo',
       'foo?bar': 'foo',
       'foo#hash': 'foo',
@@ -294,12 +294,12 @@ describe('path', () => {
     }
 
     for (const input in tests) {
-      it(input, () => {
+      it(`extracts the pathname from ${input}`, () => {
         expect(getPathname(input)).toBe(tests[input])
       })
     }
 
-    it('falsy value', () => {
+    it('returns / for a missing input', () => {
       expect(getPathname()).toBe('/')
     })
   })

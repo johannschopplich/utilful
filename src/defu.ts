@@ -41,9 +41,6 @@ type MergedValue<SourceValue, DefaultValue> = SourceValue extends null | undefin
         ? MergedObject<SourceValue, DefaultValue>
         : SourceValue
 
-/**
- * Defu function type that accepts a source and multiple defaults
- */
 export type DefuFn = <Source extends PlainObject, Defaults extends PlainObject[]>(
   source: Source,
   ...defaults: Defaults
@@ -53,9 +50,6 @@ export type DefuFn = <Source extends PlainObject, Defaults extends PlainObject[]
 
 // #region Create defu
 
-/**
- * Create a defu function with optional custom merger
- */
 export function createDefu(
   merger?: DefuMerger,
 ): DefuFn {
@@ -86,12 +80,12 @@ function _defu<T extends PlainObject>(
   const result = { ...defaults }
 
   for (const [key, value] of Object.entries(source)) {
-    // Skip prototype pollution
+    // Skip keys that would write through to the prototype.
     if (key === '__proto__' || key === 'constructor') {
       continue
     }
 
-    // Skip null/undefined values – let defaults take precedence
+    // Let the defaults take precedence over a null or undefined source value.
     if (value == null) {
       continue
     }

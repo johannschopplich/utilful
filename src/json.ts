@@ -1,7 +1,7 @@
 // #region Parse JSON
 
 /**
- * Type-safe wrapper around `JSON.parse`.
+ * Wraps `JSON.parse` with a typed return value.
  *
  * @remarks
  * Falls back to the original value if parsing fails or the value is not a string.

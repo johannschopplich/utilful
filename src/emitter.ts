@@ -4,8 +4,6 @@
 
 export type EventType = string | symbol
 
-// An event handler can take an optional event argument
-// and should not return a value
 export type Handler<T = unknown> = (event: T) => void
 export type WildcardHandler<T = Record<string, unknown>> = (
   type: keyof T,
@@ -15,7 +13,6 @@ export type WildcardHandler<T = Record<string, unknown>> = (
 export type EventHandlerList<T = unknown> = Handler<T>[]
 export type WildCardEventHandlerList<T = Record<string, unknown>> = WildcardHandler<T>[]
 
-// A map of event types and their corresponding event handlers.
 export type EventHandlerMap<Events extends Record<EventType, unknown>> = Map<
   keyof Events | '*',
   EventHandlerList<Events[keyof Events]> | WildCardEventHandlerList<Events>
@@ -39,7 +36,7 @@ export interface Emitter<Events extends Record<EventType, unknown>> {
 // #region Create emitter
 
 /**
- * Simple functional event emitter / pubsub.
+ * Creates a functional pubsub event emitter.
  *
  * @remarks Ported from `mitt`.
  * @see https://github.com/developit/mitt
@@ -58,7 +55,7 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
     events,
 
     /**
-     * Register an event handler for the given type.
+     * Registers an event handler for the given type.
      *
      * @memberOf createEmitter
      */
@@ -79,7 +76,7 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
     },
 
     /**
-     * Remove an event handler for the given type.
+     * Removes an event handler for the given type.
      *
      * @remarks
      * If `handler` is omitted, all handlers of the given type are removed.
@@ -105,11 +102,11 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
     },
 
     /**
-     * Invoke all handlers for the given type.
+     * Invokes all handlers for the given type.
      *
      * @remarks
      * If present, `'*'` handlers are invoked after type-matched handlers.
-     * Manually firing '*' handlers is not supported.
+     * Manually firing `'*'` handlers is not supported.
      *
      * @memberOf createEmitter
      */

@@ -35,7 +35,7 @@ export function withoutTrailingSlash(path?: string): string {
   if (!path || path === '/')
     return '/'
 
-  // Find where the pathname ends (before ? or #)
+  // Find where the pathname ends (before ? or #).
   let pathEnd = path.length
   const queryIndex = path.indexOf('?')
   const hashIndex = path.indexOf('#')
@@ -45,9 +45,8 @@ export function withoutTrailingSlash(path?: string): string {
   if (hashIndex !== -1 && hashIndex < pathEnd)
     pathEnd = hashIndex
 
-  // Check if there's a trailing slash before query/hash
   if (pathEnd > 0 && path[pathEnd - 1] === '/') {
-    // Special case: don't remove the root slash
+    // Special case: don't remove the root slash.
     if (pathEnd === 1)
       return path
     return path.slice(0, pathEnd - 1) + path.slice(pathEnd)
@@ -64,7 +63,7 @@ export function withTrailingSlash(path?: string): string {
   if (!path || path === '/')
     return '/'
 
-  // Find where the pathname ends (before ? or #)
+  // Find where the pathname ends (before ? or #).
   let pathEnd = path.length
   const queryIndex = path.indexOf('?')
   const hashIndex = path.indexOf('#')
@@ -74,7 +73,6 @@ export function withTrailingSlash(path?: string): string {
   if (hashIndex !== -1 && hashIndex < pathEnd)
     pathEnd = hashIndex
 
-  // Check if there's already a trailing slash before query/hash
   if (pathEnd > 0 && path[pathEnd - 1] === '/') {
     return path
   }
@@ -134,7 +132,7 @@ export function withBase(input = '', base = ''): string {
 
   const _base = withoutTrailingSlash(base)
 
-  // Check if input starts with base followed by /, ?, # or end of string
+  // Check whether `input` starts with `base` followed by `/`, `?`, `#`, or the end of the string.
   if (input.startsWith(_base) && (input.length === _base.length || input[_base.length] === '/' || input[_base.length] === '?' || input[_base.length] === '#'))
     return input
 
@@ -150,7 +148,7 @@ export function withoutBase(input = '', base = ''): string {
 
   const _base = withoutTrailingSlash(base)
 
-  // Check if input starts with base followed by /, ?, # or end of string
+  // Check whether `input` starts with `base` followed by `/`, `?`, `#`, or the end of the string.
   if (!input.startsWith(_base) || (input.length !== _base.length && input[_base.length] !== '/' && input[_base.length] !== '?' && input[_base.length] !== '#'))
     return input
 
@@ -189,7 +187,7 @@ export function getPathname(path = '/'): string {
 }
 
 /**
- * Returns the URL with the given query parameters. If a query parameter is undefined, it is omitted.
+ * Returns the URL with the given query parameters. If a query parameter is `undefined`, it is omitted.
  */
 export function withQuery(input: string, query?: QueryObject): string {
   if (!query || Object.keys(query).length === 0)
@@ -198,7 +196,6 @@ export function withQuery(input: string, query?: QueryObject): string {
   const searchIndex = input.indexOf('?')
   const hasExistingParams = searchIndex !== -1
 
-  // Extract base URL and initialize search params
   const base = hasExistingParams ? input.slice(0, searchIndex) : input
   const searchParams = new URLSearchParams(
     hasExistingParams ? input.slice(searchIndex + 1) : undefined,

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { createCSV, createCSVAsync, createCSVStream, escapeCSVValue, parseCSV, parseCSVStream } from './csv'
 
 describe('csv', () => {
-  // Common fixtures
   const people = [
     { name: 'John', age: '30', city: 'New York' },
     { name: 'Jane', age: '25', city: 'Boston' },
@@ -84,7 +83,7 @@ describe('csv', () => {
       expect(result).toBe(expected)
     })
 
-    it('escapes values requiring quoting via escapeCSVValue', () => {
+    it('escapes values that require quoting', () => {
       const data = [
         { name: 'John, Jr.', note: 'He said "hi"' },
         { name: 'Multi\nline', note: 'CR\r\nLF' },
@@ -93,7 +92,7 @@ describe('csv', () => {
       expect(result).toBe('name,note\n"John, Jr.","He said ""hi"""\n"Multi\nline","CR\r\nLF"')
     })
 
-    it('quotes all values when specified', () => {
+    it('quotes all values when quoteAll is set', () => {
       const result = createCSV(people, ['name', 'age'], { quoteAll: true })
       expect(result).toBe('"name","age"\n"John","30"\n"Jane","25"\n"Bob","40"')
     })
@@ -103,7 +102,7 @@ describe('csv', () => {
       expect(result).toBe('name,age')
     })
 
-    it('handles undefined, null, empty, and missing keys as empty fields', () => {
+    it('writes undefined, null, empty and missing keys as empty fields', () => {
       const data = [
         { name: 'John', age: undefined },
         { name: null, age: '25' },
@@ -128,12 +127,12 @@ describe('csv', () => {
       expect(result).toBe('"na,me","a""ge"\nJohn,30')
     })
 
-    it('supports CRLF line endings when specified', () => {
+    it('separates rows with CRLF for lineEnding', () => {
       const result = createCSV(people, ['name', 'age'], { lineEnding: '\r\n' })
       expect(result).toBe('name,age\r\nJohn,30\r\nJane,25\r\nBob,40')
     })
 
-    describe('column inference (when columns not specified)', () => {
+    describe('column inference', () => {
       it('infers union of keys in first-seen order', () => {
         const mixed = [
           { name: 'John', age: '30' }, // Introduces name, age
@@ -144,7 +143,7 @@ describe('csv', () => {
         expect(result).toBe('name,age,city\nJohn,30,\nJane,,Boston\nBob,40,Chicago')
       })
 
-      it('accepts options', () => {
+      it('applies addHeader while inferring columns', () => {
         const result = createCSV(people, { addHeader: false })
         expect(result).toBe('John,30,New York\nJane,25,Boston\nBob,40,Chicago')
       })
@@ -198,7 +197,7 @@ describe('csv', () => {
       ])
     })
 
-    it('handles quoted values containing delimiters', () => {
+    it('parses a quoted value containing a delimiter', () => {
       const csv = 'name,city\n"Doe, John",New York\nJane,"Boston, MA"'
       expect(parseCSV(csv)).toEqual([
         { name: 'Doe, John', city: 'New York' },
@@ -206,7 +205,7 @@ describe('csv', () => {
       ])
     })
 
-    it('handles quoted values containing escaped quotes', () => {
+    it('parses a quoted value containing an escaped quote', () => {
       const csv = 'name,quote\n"John ""Johnny"" Doe","He said ""Hello"""'
       expect(parseCSV(csv)).toEqual([
         { name: 'John "Johnny" Doe', quote: 'He said "Hello"' },
@@ -251,7 +250,7 @@ b,"line2"
       ])
     })
 
-    it('handles values with newlines', () => {
+    it('parses a quoted value containing a newline', () => {
       const csv = `
 name,bio
 "John Doe","Line 1
@@ -264,7 +263,7 @@ Jane,"Single line"
       ])
     })
 
-    it('handles CR and CRLF newlines inside quoted values', () => {
+    it('parses CR and CRLF newlines inside a quoted value', () => {
       const csv = 'name,bio\r\n"John","line1\rline2"\r\n"Jane","line1\r\nline2"'
       expect(parseCSV(csv)).toEqual([
         { name: 'John', bio: 'line1\rline2' },
@@ -272,18 +271,18 @@ Jane,"Single line"
       ])
     })
 
-    it('handles empty input and headers-only input', () => {
+    it('returns an empty array for empty and headers-only input', () => {
       expect(parseCSV()).toEqual([])
       expect(parseCSV('')).toEqual([])
       expect(parseCSV('name,age,city')).toEqual([])
     })
 
-    it('handles headers-only input with a trailing newline', () => {
+    it('returns an empty array for headers-only input with a trailing newline', () => {
       expect(parseCSV('name,age,city\n')).toEqual([])
       expect(parseCSV('name,age,city\r\n')).toEqual([])
     })
 
-    it('handles Windows line endings (CRLF) and mixed endings', () => {
+    it('parses CRLF and mixed line endings', () => {
       const crlf = 'name,age\r\nJohn,30\r\nJane,25'
       expect(parseCSV(crlf)).toEqual([
         { name: 'John', age: '30' },
@@ -298,7 +297,7 @@ Jane,"Single line"
       ])
     })
 
-    it('handles CR-only line endings (\\r)', () => {
+    it('parses CR-only line endings', () => {
       const csv = 'name,age\rJohn,30\rJane,25'
       expect(parseCSV(csv)).toEqual([
         { name: 'John', age: '30' },
@@ -405,7 +404,7 @@ Jane,"Single line"
         .toThrow('CSV header row contains duplicate column name(s): name, age')
     })
 
-    it('handles complex nested quotes and escaping', () => {
+    it('parses nested quotes and escaping', () => {
       const csv = `
 name,description
 "Product A","This product has ""special"" features and ""unique"" design"
@@ -429,7 +428,7 @@ name,description
       expect(parseCSV(csv, { trim: true })).toEqual([])
     })
 
-    it('supports UTF-8 characters', () => {
+    it('parses UTF-8 characters', () => {
       const csv = 'emoji,word\n😀,café'
       expect(parseCSV(csv)).toEqual([{ emoji: '😀', word: 'café' }])
     })
@@ -451,8 +450,7 @@ name,description
     })
   })
 
-  // Cross-function guarantees
-  describe('round-trip: createCSV → parseCSV', () => {
+  describe('round-trip', () => {
     it('round-trips basic data with default options', () => {
       const fields = ['name', 'age', 'city'] as const
       const csv = createCSV(people, fields)
@@ -510,11 +508,11 @@ name,description
         csvStreamed += chunk
       }
 
-      // Streaming version has trailing newline, so add one to sync version
+      // The streaming version has a trailing newline, so add one to the sync version.
       expect(csvStreamed).toBe(`${csvSync}\n`)
     })
 
-    it('handles async iterables', async () => {
+    it('accepts an async iterable', async () => {
       async function* generateData() {
         for (const person of people) {
           yield person
@@ -529,7 +527,7 @@ name,description
       expect(csvStreamed).toBe('name,age\nJohn,30\nJane,25\nBob,40\n')
     })
 
-    it('supports custom delimiters and options', async () => {
+    it('applies delimiter, quoteAll and addHeader', async () => {
       let csvStreamed = ''
       for await (const chunk of createCSVStream(people, ['name', 'age'], {
         delimiter: ';',
@@ -542,7 +540,7 @@ name,description
       expect(csvStreamed).toBe('"John";"30"\n"Jane";"25"\n"Bob";"40"\n')
     })
 
-    it('properly escapes values containing special characters', async () => {
+    it('escapes values containing special characters', async () => {
       const data = [
         { name: 'John "Johnny" Doe', note: 'Line 1\nLine 2' },
         { name: 'Jane', note: 'Normal' },
@@ -565,7 +563,7 @@ name,description
       expect(csv).toBe(expected)
     })
 
-    it('works with async iterables', async () => {
+    it('accepts an async iterable', async () => {
       async function* generateData() {
         yield { name: 'John', age: '30' }
         yield { name: 'Jane', age: '25' }
@@ -589,7 +587,7 @@ name,description
       expect(out).toEqual(expected)
     })
 
-    it('handles multi-chunk input with arbitrary boundaries', async () => {
+    it('parses multi-chunk input with arbitrary boundaries', async () => {
       const csv = 'name,age\nJohn,30\nJane,25\nBob,40'
       const chunks = ['name,age\nJo', 'hn,30\nJane,25\nB', 'ob,40']
 
@@ -603,9 +601,9 @@ name,description
       expect(out).toEqual(expected)
     })
 
-    it('handles chunk boundaries inside quoted fields', async () => {
+    it('parses a chunk boundary inside a quoted field', async () => {
       const csv = 'name,bio\n"John","Line 1\nLine 2"\n"Jane","Single line"'
-      // Split in the middle of the quoted field with newline
+      // Split in the middle of the quoted field with newline.
       const chunks = ['name,bio\n"John","Line 1\nLi', 'ne 2"\n"Jane","Single line"']
 
       const expected = parseCSV(csv)
@@ -618,9 +616,9 @@ name,description
       expect(out).toEqual(expected)
     })
 
-    it('handles chunk boundaries around CRLF pairs', async () => {
+    it('parses a chunk boundary around a CRLF pair', async () => {
       const csv = 'name,age\r\nJohn,30\r\nJane,25'
-      // Split between CR and LF
+      // Split between CR and LF.
       const chunks = ['name,age\r', '\nJohn,30\r\nJane,25']
 
       const expected = parseCSV(csv)
@@ -633,8 +631,8 @@ name,description
       expect(out).toEqual(expected)
     })
 
-    it('handles chunk boundaries splitting an escaped quote pair', async () => {
-      // Boundary between the two quotes of the escaped `""` pair
+    it('parses a chunk boundary splitting an escaped quote pair', async () => {
+      // Boundary between the two quotes of the escaped `""` pair.
       const chunks = ['a\n"x"', '"y"']
 
       const out: CSVRow<'a'>[] = []
@@ -686,7 +684,7 @@ name,description
       await expect(parseAll()).rejects.toThrow('CSV row 3 has 1 extra field(s)')
     })
 
-    it('works with async iterables', async () => {
+    it('accepts an async iterable', async () => {
       async function* generateChunks() {
         yield 'name,age\n'
         yield 'John,30\n'
@@ -704,7 +702,7 @@ name,description
       ])
     })
 
-    it('supports custom delimiters and options', async () => {
+    it('applies a custom delimiter', async () => {
       const csv = 'name;age\nJohn;30\nJane;25'
       const chunks = [csv]
 
@@ -736,8 +734,8 @@ name,description
     })
   })
 
-  describe('round-trip: streaming encoder/parser', () => {
-    it('createCSVStream → parseCSVStream round-trips correctly', async () => {
+  describe('streaming round-trip', () => {
+    it('round-trips data with default options', async () => {
       const data = [
         { name: 'John', age: '30', city: 'New York' },
         { name: 'Jane', age: '25', city: 'Boston' },
@@ -763,13 +761,13 @@ name,description
         { name: 'Jane', note: 'He said "Hi"' },
       ]
 
-      // Collect from stream
+      // Collect from stream.
       let csvFull = ''
       for await (const chunk of createCSVStream(data, ['name', 'note'])) {
         csvFull += chunk
       }
 
-      // Split at arbitrary positions
+      // Split at arbitrary positions.
       const chunks = [
         csvFull.slice(0, 15),
         csvFull.slice(15, 40),

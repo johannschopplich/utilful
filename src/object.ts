@@ -1,9 +1,7 @@
 // #region Memoize
 
 /**
- * A simple general purpose memoizer utility.
- * - Lazily computes a value when accessed
- * - Auto-caches the result by overwriting the getter
+ * Wraps a getter so its value is computed on first access and cached from then on.
  *
  * @remarks
  * Useful for deferring initialization or expensive operations. Unlike a simple getter, there is no runtime overhead after the first invocation, since the getter itself is overwritten with the memoized value.
@@ -29,14 +27,14 @@ export function memoize<T>(getter: () => T): { value: T } {
 // #region Object utilities
 
 /**
- * Strictly typed `Object.keys`.
+ * Wraps `Object.keys` with a stricter return type.
  */
 export function objectKeys<T extends Record<any, any>>(obj: T): Array<`${Extract<keyof T, string | number>}`> {
   return Object.keys(obj) as Array<`${Extract<keyof T, string | number>}`>
 }
 
 /**
- * Strictly typed `Object.entries`.
+ * Wraps `Object.entries` with a stricter return type.
  */
 export function objectEntries<T extends Record<any, any>>(obj: T): Array<[keyof T, T[keyof T]]> {
   return Object.entries(obj) as Array<[keyof T, T[keyof T]]>

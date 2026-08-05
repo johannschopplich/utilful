@@ -5,12 +5,12 @@ import { createDefu, defu } from './defu'
 const nonObject = [null, undefined, [], false, true, 123]
 
 describe('defu', () => {
-  it('should copy only missing properties defaults', () => {
+  it('fills in only the keys the source lacks', () => {
     const result = defu({ a: 'c' }, { a: 'bbb', d: 'c' })
     expect(result).toEqual({ a: 'c', d: 'c' })
   })
 
-  it('should fill in values that are null', () => {
+  it('ignores null values on either side', () => {
     const result1 = defu({ a: null as null }, { a: 'c', d: 'c' })
     expect(result1).toEqual({ a: 'c', d: 'c' })
 
@@ -18,28 +18,28 @@ describe('defu', () => {
     expect(result2).toEqual({ a: 'c', d: 'c' })
   })
 
-  it('should copy nested values', () => {
+  it('merges nested objects', () => {
     const result = defu({ a: { b: 'c' } }, { a: { d: 'e' } })
     expect(result).toEqual({
       a: { b: 'c', d: 'e' },
     })
   })
 
-  it('should concat array values by default', () => {
+  it('concatenates arrays with the source values first', () => {
     const result = defu({ array: ['a', 'b'] }, { array: ['c', 'd'] })
     expect(result).toEqual({
       array: ['a', 'b', 'c', 'd'],
     })
   })
 
-  it('should correctly type differing array values', () => {
+  it('concatenates arrays whose items differ in shape', () => {
     const item1 = { name: 'Name', age: 21 }
     const item2 = { name: 'Name', age: '42' }
     const result = defu({ items: [item1] }, { items: [item2] })
     expect(result).toEqual({ items: [item1, item2] })
   })
 
-  it('should avoid merging objects with custom constructor', () => {
+  it('keeps the source instance when both sides are class instances', () => {
     class Test {
       value: string
       constructor(value: string) {
@@ -50,14 +50,14 @@ describe('defu', () => {
     expect(result).toEqual({ test: new Test('a') })
   })
 
-  it('should assign date properly', () => {
+  it('keeps the source Date instead of merging it', () => {
     const date1 = new Date('2020-01-01')
     const date2 = new Date('2020-01-02')
     const result = defu({ date: date1 }, { date: date2 })
     expect(result).toEqual({ date: date1 })
   })
 
-  it('should correctly merge different object types', () => {
+  it('keeps the source value when the two sides have unrelated types', () => {
     const fn = () => 42
     const re = /test/i
 
@@ -65,19 +65,19 @@ describe('defu', () => {
     expect(result).toEqual({ a: fn })
   })
 
-  it('should handle non object first param', () => {
+  it('returns the defaults when the source is not an object', () => {
     for (const val of nonObject) {
       expect(defu(val as any, { d: true })).toEqual({ d: true })
     }
   })
 
-  it('should handle non object second param', () => {
+  it('returns the source when the defaults are not an object', () => {
     for (const val of nonObject) {
       expect(defu({ d: true }, val as any)).toEqual({ d: true })
     }
   })
 
-  it('multi defaults', () => {
+  it('lets earlier arguments win across multiple defaults', () => {
     const result = defu({ a: 1 }, { b: 2, a: 'x' }, { c: 3, a: 'x', b: 'x' })
     expect(result).toEqual({
       a: 1,
@@ -86,7 +86,7 @@ describe('defu', () => {
     })
   })
 
-  it('should not override Object prototype', () => {
+  it('ignores a constructor key instead of polluting the prototype', () => {
     const payload = JSON.parse(
       '{"constructor": {"prototype": {"isAdmin": true}}}',
     )
@@ -97,7 +97,7 @@ describe('defu', () => {
     expect({}.isAdmin).toBe(undefined)
   })
 
-  it('should not pollute prototype via __proto__ key', () => {
+  it('ignores a __proto__ key instead of polluting the prototype', () => {
     const payload = JSON.parse('{"__proto__": {"isAdmin": true}, "a": 1}')
     const result = defu(payload, {}) as Record<string, unknown>
     expect(Object.keys(result)).toEqual(['a'])
@@ -105,7 +105,7 @@ describe('defu', () => {
     expect({}.isAdmin).toBe(undefined)
   })
 
-  it('should expose keys that only exist in defaults on the merged type', () => {
+  it('exposes keys that exist only in the defaults', () => {
     const result = defu({ a: 1 }, { b: 2 })
     expect(result.b).toBe(2)
     expectTypeOf(result.a).toEqualTypeOf<number>()
@@ -117,14 +117,14 @@ describe('defu', () => {
     expectTypeOf(nested.a.d).toEqualTypeOf<string>()
   })
 
-  it('should ignore non-object arguments', () => {
+  it('ignores non-object arguments', () => {
     expect(defu(null as any, { foo: 1 }, false as any, 123 as any, { bar: 2 })).toEqual({
       foo: 1,
       bar: 2,
     })
   })
 
-  it('custom merger', () => {
+  it('lets a custom merger replace the default merge', () => {
     const ext = createDefu((obj, key, val) => {
       if (typeof val === 'number') {
         (obj as any)[key] += val
@@ -134,7 +134,7 @@ describe('defu', () => {
     expect(ext({ cost: 15 }, { cost: 10 })).toEqual({ cost: 25 })
   })
 
-  it('custom merger with namespace', () => {
+  it('passes the dotted key path to a custom merger', () => {
     const ext = createDefu((obj, key, val, namespace) => {
       if (key === 'modules') {
         obj[key] = `${namespace}:${[...val, ...obj[key]].sort().join(',')}`

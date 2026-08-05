@@ -13,14 +13,8 @@ const BYTE_ORDER_MARK = '\uFEFF'
 
 // #region Types
 
-/**
- * Represents a row in a CSV file with column names of type T.
- */
 export type CSVRow<T extends string = string> = Record<T, string>
 
-/**
- * Options for the CSV creation functions.
- */
 export interface CSVCreateOptions {
   /** @default ',' */
   delimiter?: string
@@ -32,19 +26,16 @@ export interface CSVCreateOptions {
   lineEnding?: string
 }
 
-/**
- * Options for the CSV parsing functions.
- */
 export interface CSVParseOptions {
   /** @default ',' */
   delimiter?: string
   /**
-   * Trim whitespace from unquoted headers and values.
+   * Whether to trim whitespace from unquoted headers and values.
    * @default false
    */
   trim?: boolean
   /**
-   * Throw if a row's field count does not match the header row.
+   * Whether to throw if a row's field count does not match the header row.
    * @default true
    */
   strict?: boolean
@@ -104,7 +95,6 @@ export function createCSV<T extends Record<string, unknown>>(
   columnsOrOptions?: readonly (keyof T)[] | CSVCreateOptions,
   maybeOptions: CSVCreateOptions = {},
 ): string {
-  // Discriminate arguments
   let columns: readonly (keyof T)[]
   let options: CSVCreateOptions
 
@@ -117,7 +107,6 @@ export function createCSV<T extends Record<string, unknown>>(
     options = (columnsOrOptions ?? {}) as CSVCreateOptions
   }
 
-  // Handle empty data with no inferred columns
   if (columns.length === 0 && data.length === 0) {
     return ''
   }
@@ -370,14 +359,13 @@ class CSVParserCore<Header extends string> {
       this.consume(chunkTail)
     }
 
-    // Unterminated quoted field check (before processing remaining data)
+    // Check for an unterminated quoted field before flushing the leftover row.
     if (this.inQuotes) {
       throw new SyntaxError(
         `CSV contains unterminated quoted field at row ${this.currentRowNumber}`,
       )
     }
 
-    // If there is leftover field/row, append it
     if (this.currentField !== '' || this.currentRow.length > 0) {
       this.appendRow()
     }
@@ -388,39 +376,35 @@ class CSVParserCore<Header extends string> {
       const character = text[i]
       const nextCharacter = i + 1 < text.length ? text[i + 1] : ''
 
-      // Skip whitespace after closing quote until delimiter or newline (but not if it IS the delimiter)
+      // Skip whitespace after a closing quote until the delimiter or newline, unless the whitespace character is itself the delimiter.
       if (this.isFieldQuoted && !this.inQuotes && character !== this.delimiter && (character === SPACE || character === TAB)) {
         continue
       }
 
-      // Handle quotes
       if (character === DOUBLE_QUOTE) {
-        // Quote at the start of a field opens quoted mode
+        // A quote at the start of a field opens quoted mode.
         if (this.currentField.length === 0 && !this.inQuotes) {
           this.inQuotes = true
           this.isFieldQuoted = true
         }
         else if (this.inQuotes && nextCharacter === DOUBLE_QUOTE) {
-          // Escaped quote inside quotes
+          // An escaped quote inside a quoted field.
           this.currentField += DOUBLE_QUOTE
-          i++ // Skip the next quote
+          i++ // Skip the next quote.
         }
         else if (this.inQuotes) {
-          // Close quote mode
           this.inQuotes = false
         }
         else {
-          // Quote in the middle of an unquoted field - treat as literal
+          // A quote in the middle of an unquoted field is kept as a literal character.
           this.currentField += character
         }
       }
-      // Handle field delimiter when not in quotes
       else if (character === this.delimiter && !this.inQuotes) {
         this.appendField()
       }
-      // Handle row delimiter when not in quotes
       else if ((character === NEWLINE || character === CARRIAGE_RETURN) && !this.inQuotes) {
-        // Skip CRLF pairs
+        // Skip CRLF pairs.
         if (character === CARRIAGE_RETURN && nextCharacter === NEWLINE) {
           i++
         }
@@ -485,14 +469,14 @@ class CSVParserCore<Header extends string> {
   }
 
   private processDataRow(fieldValues: string[], headers: Header[]): void {
-    // Skip blank rows
+    // Skip blank rows.
     if (fieldValues.length === 1 && fieldValues[0]!.length === 0) {
       return
     }
 
     if (this.strict) {
       if (fieldValues.length > headers.length) {
-        // Tolerate empty overflow fields, e.g. from a trailing delimiter
+        // Tolerate empty overflow fields, e.g. from a trailing delimiter.
         const overflowFieldValues = fieldValues.slice(headers.length)
         if (overflowFieldValues.some(fieldValue => fieldValue.length > 0)) {
           throw new SyntaxError(
@@ -522,10 +506,10 @@ class CSVParserCore<Header extends string> {
  * UTF-8 byte order mark is stripped.
  *
  * Parsing tolerances (lenient deviations from RFC 4180):
- * - LF, CR, and CRLF line endings are all accepted
- * - Whitespace between a closing quote and the next delimiter or line break is ignored
+ * - LF, CR, and CRLF line endings are all accepted.
+ * - Whitespace between a closing quote and the next delimiter or line break is ignored.
  * - A field is only treated as quoted if it starts with a quote; quotes inside
- *   unquoted fields are kept as literal characters
+ *   unquoted fields are kept as literal characters.
  *
  * @example
  * const csv = `name,age

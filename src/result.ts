@@ -12,8 +12,8 @@ export type ResultData<T, E> = OkData<T> | ErrData<E>
 
 /**
  * Successful result variant.
- * @template T Success value type.
- * @template E Error type (phantom - for type unification).
+ * @template T Success value type
+ * @template E Error type (phantom - for type unification)
  */
 export class Ok<T, E = never> {
   readonly value: T
@@ -28,12 +28,12 @@ export class Ok<T, E = never> {
     return new Ok(fn(this.value))
   }
 
-  /** No-op on Ok, returns self with new error type. */
+  /** Returns this `Ok` unchanged, with a new error type. */
   mapError<E2>(_fn: (error: E) => E2): Ok<T, E2> {
     return this as unknown as Ok<T, E2>
   }
 
-  /** Chains a Result-returning function. */
+  /** Chains a `Result`-returning function. */
   andThen<U, E2>(fn: (value: T) => Result<U, E2>): Result<U, E | E2> {
     return fn(this.value)
   }
@@ -48,7 +48,7 @@ export class Ok<T, E = never> {
     return this.value
   }
 
-  /** Pattern matches on the Result. */
+  /** Pattern matches on the `Result`. */
   match<R>(handlers: { ok: (value: T) => R, err: (error: E) => R }): R {
     return handlers.ok(this.value)
   }
@@ -56,8 +56,8 @@ export class Ok<T, E = never> {
 
 /**
  * Error result variant.
- * @template T Success type (phantom - for type unification).
- * @template E Error value type.
+ * @template T Success type (phantom - for type unification)
+ * @template E Error value type
  */
 export class Err<T, E> {
   readonly error: E
@@ -67,7 +67,7 @@ export class Err<T, E> {
     this.error = error
   }
 
-  /** No-op on Err, returns self with new value type. */
+  /** Returns this `Err` unchanged, with a new value type. */
   map<U>(_fn: (value: T) => U): Err<U, E> {
     return this as unknown as Err<U, E>
   }
@@ -77,7 +77,7 @@ export class Err<T, E> {
     return new Err(fn(this.error))
   }
 
-  /** No-op on Err, returns self with widened error type. */
+  /** Returns this `Err` unchanged, with a widened error type. */
   andThen<U, E2>(_fn: (value: T) => Result<U, E2>): Err<U, E | E2> {
     return this as unknown as Err<U, E | E2>
   }
@@ -92,7 +92,7 @@ export class Err<T, E> {
     return fallback
   }
 
-  /** Pattern matches on the Result. */
+  /** Pattern matches on the `Result`. */
   match<R>(handlers: { ok: (value: T) => R, err: (error: E) => R }): R {
     return handlers.err(this.error)
   }

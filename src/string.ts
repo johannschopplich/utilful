@@ -9,7 +9,7 @@ const URL_ALPHABET = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvw
 export const TEMPLATE_PLACEHOLDER_RE: RegExp = /\{(\w+)\}/g
 
 /**
- * Simple template engine to replace variables in a string.
+ * Replaces `{name}` placeholders in a string with the matching variable.
  *
  * @remarks
  * Only own properties of `variables` are substituted, so placeholders like
