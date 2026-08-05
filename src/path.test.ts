@@ -285,6 +285,17 @@ describe('path', () => {
       'https://example.com/foo': '/foo',
       'https://example.com/foo?bar': '/foo',
       'https://example.com/foo#hash': '/foo',
+      'https://example.com/foo?bar#baz': '/foo',
+      'https://example.com?bar': '/',
+      'https://example.com#/not-a-path': '/',
+      'https://user:pass@example.com/foo': '/foo',
+      'https://example.com:8080/foo': '/foo',
+      'https://[::1]:8080/foo': '/foo',
+      'HTTPS://EXAMPLE.COM/Foo': '/Foo',
+      // Absolute URLs are sliced too, so their pathname is left unnormalized.
+      'https://example.com/a b': '/a b',
+      'https://example.com/a/../b': '/a/../b',
+      'https://example.com/ünïcode': '/ünïcode',
       // Relative paths and non-URL schemes are sliced, not URL-parsed.
       'foo': 'foo',
       'foo?bar': 'foo',

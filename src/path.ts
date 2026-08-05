@@ -166,24 +166,43 @@ const URL_SCHEME_RE = /^[a-z][\w+.-]*:\/\//i
  * Returns the pathname of the given path, which is the path without the query string or hash.
  *
  * @remarks
- * Absolute URLs (with a scheme, e.g. `https://example.com/foo`) return the URL's pathname.
- * All other inputs are returned unchanged with the query string and hash removed.
+ * Absolute URLs (with a scheme, e.g. `https://example.com/foo`) return the segment
+ * after the authority. The result is sliced out verbatim, never normalized, so
+ * percent-encoding and `..` segments survive as written.
  */
 export function getPathname(path = '/'): string {
+  let pathStart = 0
+
   if (URL_SCHEME_RE.test(path)) {
-    return new URL(path).pathname
+    // The authority runs from `://` to the first `/`, `?` or `#`. Anything but a
+    // slash means the URL carries no path at all.
+    const authorityStart = path.indexOf('://') + 3
+    let authorityEnd = path.length
+
+    for (let i = authorityStart; i < path.length; i++) {
+      const character = path[i]
+      if (character === '/' || character === '?' || character === '#') {
+        authorityEnd = i
+        break
+      }
+    }
+
+    if (path[authorityEnd] !== '/')
+      return '/'
+
+    pathStart = authorityEnd
   }
 
   let pathEnd = path.length
-  const queryIndex = path.indexOf('?')
-  const hashIndex = path.indexOf('#')
+  const queryIndex = path.indexOf('?', pathStart)
+  const hashIndex = path.indexOf('#', pathStart)
 
   if (queryIndex !== -1)
     pathEnd = queryIndex
   if (hashIndex !== -1 && hashIndex < pathEnd)
     pathEnd = hashIndex
 
-  return path.slice(0, pathEnd) || '/'
+  return path.slice(pathStart, pathEnd) || '/'
 }
 
 /**
