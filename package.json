@@ -14,6 +14,15 @@
   "bugs": {
     "url": "https://github.com/johannschopplich/utilful/issues"
   },
+  "keywords": [
+    "csv",
+    "defu",
+    "emitter",
+    "result",
+    "typescript",
+    "url",
+    "utilities"
+  ],
   "sideEffects": false,
   "exports": {
     ".": {
