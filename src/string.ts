@@ -44,7 +44,7 @@ export function template(
  */
 export function generateRandomId(size: number = 16, dict: string = URL_ALPHABET): string {
   let id = ''
-  // A compact alternative for `for (var i = 0; i < step; i++)`.
+  // A compact alternative for `for (let i = 0; i < size; i++)`.
   let i = size
   const len = dict.length
   while (i--)
