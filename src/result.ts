@@ -13,7 +13,7 @@ export type ResultData<T, E> = OkData<T> | ErrData<E>
 /**
  * Successful result variant.
  * @template T Success value type
- * @template E Error type (phantom - for type unification)
+ * @template E Error type (phantom – for type unification)
  */
 export class Ok<T, E = never> {
   readonly value: T
@@ -56,7 +56,7 @@ export class Ok<T, E = never> {
 
 /**
  * Error result variant.
- * @template T Success type (phantom - for type unification)
+ * @template T Success type (phantom – for type unification)
  * @template E Error value type
  */
 export class Err<T, E> {

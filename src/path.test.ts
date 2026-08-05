@@ -86,7 +86,7 @@ describe('path', () => {
       { base: '/foo', input: '/', out: '/' },
       { base: '/foo', input: '/bar', out: '/bar' },
       { base: '/foo/', input: '/', out: '/' },
-      // Base present - strip it
+      // Base present – strip it
       { base: '/base', input: '/base/', out: '/' },
       { base: '/base', input: '/base/a', out: '/a' },
       { base: '/base/', input: '/base', out: '/' },
