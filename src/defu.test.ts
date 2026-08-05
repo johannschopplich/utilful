@@ -117,6 +117,68 @@ describe('defu', () => {
     expectTypeOf(nested.a.d).toEqualTypeOf<string>()
   })
 
+  it('keeps class instances nominal', () => {
+    class Branded {
+      private brand!: 'branded'
+      value = 1
+    }
+
+    const result = defu({ instance: new Branded() }, { instance: new Branded() })
+    expectTypeOf(result.instance).toEqualTypeOf<Branded>()
+  })
+
+  it('keeps built-in object types intact', () => {
+    const result = defu(
+      { when: new Date(), pattern: /a/, ids: new Set<string>(), lookup: new Map<string, number>() },
+      { when: new Date(), pattern: /b/, ids: new Set<string>(), lookup: new Map<string, number>() },
+    )
+
+    expectTypeOf(result.when).toEqualTypeOf<Date>()
+    expectTypeOf(result.pattern).toEqualTypeOf<RegExp>()
+    expectTypeOf(result.ids).toEqualTypeOf<Set<string>>()
+    expectTypeOf(result.lookup).toEqualTypeOf<Map<string, number>>()
+  })
+
+  it('keeps optional properties optional', () => {
+    interface Options {
+      required: string
+      optional?: number
+    }
+
+    // `true` only while `Key` carries the `?` modifier.
+    type IsOptional<T, Key extends keyof T> = object extends Pick<T, Key> ? true : false
+
+    const source: Options = { required: 'a' }
+    const result = defu(source, { extra: true })
+
+    expect(result.required).toBe('a')
+    expectTypeOf<IsOptional<typeof result, 'optional'>>().toEqualTypeOf<true>()
+    expectTypeOf<IsOptional<typeof result, 'required'>>().toEqualTypeOf<false>()
+  })
+
+  it('stays assignable to the option type of its inputs', () => {
+    // Mirrors third-party option bags that nest a config class, such as
+    // `OpenAPITSOptions.redocly` from `openapi-typescript`.
+    class Registry {
+      private cache = new Map<string, string>()
+      lookup(key: string): string | undefined {
+        return this.cache.get(key)
+      }
+    }
+
+    interface ServiceOptions {
+      retries?: number
+      registry?: Registry
+      nested?: { depth?: number }
+    }
+
+    const overrides: ServiceOptions = { retries: 3 }
+    const defaults: ServiceOptions = { retries: 1, nested: { depth: 2 } }
+
+    const merged: ServiceOptions = defu(overrides, defaults)
+    expect(merged).toEqual({ retries: 3, nested: { depth: 2 } })
+  })
+
   it('ignores non-object arguments', () => {
     expect(defu(null as any, { foo: 1 }, false as any, 123 as any, { bar: 2 })).toEqual({
       foo: 1,

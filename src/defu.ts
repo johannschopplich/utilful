@@ -11,6 +11,24 @@ export type DefuMerger<T extends PlainObject = PlainObject> = (
   namespace: string,
 ) => boolean | void
 
+type Nullish = null | undefined | void
+
+/**
+ * Values that `isPlainObject` rejects at runtime, so the merged type keeps them
+ * intact rather than recursing into them. `PlainObject` cannot draw this line
+ * itself: its `any` value type makes every object type satisfy it, classes and
+ * built-ins included.
+ */
+type NonPlainObject
+  = | ((...args: any[]) => any)
+    | { [Symbol.iterator]: any }
+    | Date
+    | RegExp
+    | Promise<any>
+    | Error
+    | WeakMap<object, any>
+    | WeakSet<object>
+
 /**
  * Deeply merged result type of a source object over a list of defaults.
  */
@@ -18,28 +36,34 @@ export type Defu<Source, Defaults extends any[]> = Defaults extends [infer First
   ? Defu<MergedObject<Source, First>, Rest>
   : Source
 
+/**
+ * Source merged over one defaults object, rebuilding only the shared keys.
+ * Everything else passes through `Omit`, which is what keeps optionality,
+ * `readonly` and the nominal identity of classes intact.
+ */
 type MergedObject<Source, Defaults> = Source extends PlainObject
   ? Defaults extends PlainObject
-    ? {
-        [Key in keyof Source | keyof Defaults]: MergedValue<
-          Key extends keyof Source ? Source[Key] : undefined,
-          Key extends keyof Defaults ? Defaults[Key] : undefined
-        >
-      }
+    ? Source extends Defaults
+      ? Source
+      : Omit<Source, keyof Source & keyof Defaults>
+        & Omit<Defaults, keyof Source & keyof Defaults>
+        & { -readonly [Key in keyof Source & keyof Defaults]: MergedValue<Source[Key], Defaults[Key]> }
     : Source
   : Source
 
-type MergedValue<SourceValue, DefaultValue> = SourceValue extends null | undefined
+type MergedValue<SourceValue, DefaultValue> = SourceValue extends Nullish
   ? DefaultValue
-  : SourceValue extends any[]
-    ? DefaultValue extends any[]
-      ? Array<SourceValue[number] | DefaultValue[number]>
-      : SourceValue
-    : SourceValue extends (...args: any[]) => any
-      ? SourceValue
-      : SourceValue extends PlainObject
-        ? MergedObject<SourceValue, DefaultValue>
+  : DefaultValue extends Nullish
+    ? SourceValue
+    : SourceValue extends readonly any[]
+      ? DefaultValue extends readonly any[]
+        ? Array<SourceValue[number] | DefaultValue[number]>
         : SourceValue
+      : SourceValue extends NonPlainObject
+        ? SourceValue
+        : DefaultValue extends NonPlainObject
+          ? SourceValue
+          : MergedObject<SourceValue, DefaultValue>
 
 export type DefuFn = <Source extends PlainObject, Defaults extends PlainObject[]>(
   source: Source,
