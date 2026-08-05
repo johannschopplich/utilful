@@ -64,6 +64,10 @@ describe('csv', () => {
         .toThrow(/must not be a quote or line break/)
     })
 
+    it('rejects an invalid delimiter for an empty column list', () => {
+      expect(() => createCSV([{ a: 1 }], [], { delimiter: '' })).toThrow(RangeError)
+    })
+
     it('creates a CSV string with headers by default', () => {
       const result = createCSV(people, ['name', 'age'])
       expect(result).toBe('name,age\nJohn,30\nJane,25\nBob,40')
@@ -100,6 +104,10 @@ describe('csv', () => {
     it('outputs header only for empty data array', () => {
       const result = createCSV([], ['name', 'age'])
       expect(result).toBe('name,age')
+    })
+
+    it('returns an empty string for an empty column list', () => {
+      expect(createCSV([{ a: 1 }], [])).toBe('')
     })
 
     it('writes undefined, null, empty and missing keys as empty fields', () => {
@@ -151,6 +159,10 @@ describe('csv', () => {
       it('returns empty string for empty data', () => {
         expect(createCSV([], { addHeader: true })).toBe('')
         expect(createCSV([], { addHeader: false })).toBe('')
+      })
+
+      it('returns an empty string for rows without keys', () => {
+        expect(createCSV([{}])).toBe('')
       })
     })
   })

@@ -107,10 +107,6 @@ export function createCSV<T extends Record<string, unknown>>(
     options = (columnsOrOptions ?? {}) as CSVCreateOptions
   }
 
-  if (columns.length === 0 && data.length === 0) {
-    return ''
-  }
-
   const {
     delimiter = COMMA,
     addHeader = true,
@@ -119,6 +115,11 @@ export function createCSV<T extends Record<string, unknown>>(
   } = options
 
   assertValidCSVDelimiter(delimiter)
+
+  // Without columns there is nothing to write, not even a row separator.
+  if (columns.length === 0) {
+    return ''
+  }
 
   if (addHeader) {
     const header = encodeCSVHeader(columns.map(String), delimiter, quoteAll)
@@ -258,8 +259,8 @@ function encodeCSVRow<T extends Record<string, unknown>>(
  * Within quoted values, double quotes are escaped by doubling them.
  *
  * @example
- * escapeCSVValue('hello, world') // "hello, world"
- * escapeCSVValue('contains "quotes"') // "contains ""quotes"""
+ * escapeCSVValue('hello, world') // '"hello, world"'
+ * escapeCSVValue('contains "quotes"') // '"contains ""quotes"""'
  */
 export function escapeCSVValue(
   value: unknown,
