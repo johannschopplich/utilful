@@ -13,12 +13,12 @@ export type WildcardHandler<T = Record<string, unknown>> = (
 export type EventHandlerList<T = unknown> = Handler<T>[]
 export type WildCardEventHandlerList<T = Record<string, unknown>> = WildcardHandler<T>[]
 
-export type EventHandlerMap<Events extends Record<EventType, unknown>> = Map<
+export type EventHandlerMap<Events extends Record<EventType, any>> = Map<
   keyof Events | '*',
   EventHandlerList<Events[keyof Events]> | WildCardEventHandlerList<Events>
 >
 
-export interface Emitter<Events extends Record<EventType, unknown>> {
+export interface Emitter<Events extends Record<EventType, any>> {
   events: EventHandlerMap<Events>
 
   on<Key extends keyof Events>(type: Key, handler: Handler<Events[Key]>): void
@@ -41,7 +41,7 @@ export interface Emitter<Events extends Record<EventType, unknown>> {
  * @remarks Ported from `mitt`.
  * @see https://github.com/developit/mitt
  */
-export function createEmitter<Events extends Record<EventType, unknown>>(
+export function createEmitter<Events extends Record<EventType, any>>(
   events?: EventHandlerMap<Events>,
 ): Emitter<Events> {
   type GenericEventHandler = Handler<Events[keyof Events]> | WildcardHandler<Events>
@@ -56,8 +56,6 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
 
     /**
      * Registers an event handler for the given type.
-     *
-     * @memberOf createEmitter
      */
     on<Key extends keyof Events>(
       /** Type of event to listen for, or `'*'` for all events */
@@ -80,8 +78,6 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
      *
      * @remarks
      * If `handler` is omitted, all handlers of the given type are removed.
-     *
-     * @memberOf createEmitter
      */
     off<Key extends keyof Events>(
       /** Type of event to unregister `handler` from (`'*'` to remove a wildcard handler) */
@@ -107,8 +103,6 @@ export function createEmitter<Events extends Record<EventType, unknown>>(
      * @remarks
      * If present, `'*'` handlers are invoked after type-matched handlers.
      * Manually firing `'*'` handlers is not supported.
-     *
-     * @memberOf createEmitter
      */
     emit<Key extends keyof Events>(
       /** The event type to invoke */
