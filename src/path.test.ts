@@ -193,6 +193,10 @@ describe('path', () => {
       { input: 'https://example.com:8080/foo', out: '/foo' },
       { input: 'https://[::1]:8080/foo', out: '/foo' },
       { input: 'HTTPS://EXAMPLE.COM/Foo', out: '/Foo' },
+      // Protocol-relative URLs, whose authority follows the leading `//`
+      { input: '//example.com', out: '/' },
+      { input: '//example.com/foo', out: '/foo' },
+      { input: '//example.com/foo?bar#baz', out: '/foo' },
       // Absolute URLs are sliced too, so their pathname is left unnormalized.
       { input: 'https://example.com/a b', out: '/a b' },
       { input: 'https://example.com/a/../b', out: '/a/../b' },

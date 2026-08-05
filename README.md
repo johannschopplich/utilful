@@ -510,7 +510,7 @@ withoutBase('/api/users', '/api') // '/users'
 
 #### `getPathname`
 
-Returns the pathname of the given path – everything before the query string or hash. Absolute URLs (with a scheme, e.g. `https://example.com/foo`) return the part after the host.
+Returns the pathname of the given path – everything before the query string or hash. Absolute URLs return the part after the host, whether they carry a scheme (`https://example.com/foo`) or are protocol-relative (`//example.com/foo`).
 
 The pathname is sliced out as written and never normalized, so percent-encoding and `..` segments survive:
 
@@ -521,6 +521,7 @@ declare function getPathname(path?: string): string
 ```ts
 getPathname('/foo?bar#baz') // '/foo'
 getPathname('https://example.com/foo') // '/foo'
+getPathname('//example.com/foo') // '/foo'
 getPathname('https://example.com') // '/'
 getPathname('https://example.com/a/../b') // '/a/../b' – use `new URL` if you need this resolved
 ```

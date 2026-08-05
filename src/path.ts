@@ -8,6 +8,24 @@ export type ParsedQuery = Record<string, string | string[]>
 
 // #endregion
 
+// #region Absolute URLs
+
+const URL_SCHEME_RE = /^[a-z][\w+.-]*:\/\//i
+
+/**
+ * Returns the index at which the authority of an absolute URL starts, or `-1`
+ * for a path that carries none. A protocol-relative input such as
+ * `//example.com/foo` counts as absolute: its authority follows the leading `//`.
+ */
+function getAuthorityStart(path: string): number {
+  if (path.startsWith('//'))
+    return 2
+
+  return URL_SCHEME_RE.test(path) ? path.indexOf('://') + 3 : -1
+}
+
+// #endregion
+
 // #region Slash manipulation
 
 /**
@@ -163,23 +181,22 @@ export function withoutBase(input = '', base = ''): string {
 
 // #region Query string manipulation
 
-const URL_SCHEME_RE = /^[a-z][\w+.-]*:\/\//i
-
 /**
  * Returns the pathname of the given path, which is the path without the query string or hash.
  *
  * @remarks
- * Absolute URLs (with a scheme, e.g. `https://example.com/foo`) return the segment
- * after the authority. The result is sliced out verbatim, never normalized, so
- * percent-encoding and `..` segments survive as written.
+ * Absolute URLs return the segment after the authority, whether they carry a
+ * scheme (`https://example.com/foo`) or are protocol-relative (`//example.com/foo`).
+ * The result is sliced out verbatim, never normalized, so percent-encoding and
+ * `..` segments survive as written.
  */
 export function getPathname(path = '/'): string {
   let pathStart = 0
+  const authorityStart = getAuthorityStart(path)
 
-  if (URL_SCHEME_RE.test(path)) {
-    // The authority runs from `://` to the first `/`, `?` or `#`. Anything but a
-    // slash means the URL carries no path at all.
-    const authorityStart = path.indexOf('://') + 3
+  if (authorityStart !== -1) {
+    // The authority runs to the first `/`, `?` or `#`. Anything but a slash
+    // means the URL carries no path at all.
     let authorityEnd = path.length
 
     for (let i = authorityStart; i < path.length; i++) {
