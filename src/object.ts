@@ -45,11 +45,16 @@ export function objectEntries<T extends Record<any, any>>(obj: T): Array<[keyof 
 // #region Deep apply
 
 /**
- * Deeply applies a callback to every key-value pair in the given object, as well as nested objects and arrays (including arrays nested inside arrays).
+ * Applies a callback to every key-value pair of the given object, and to every pair
+ * inside nested objects and arrays (including arrays nested inside arrays).
+ *
+ * @remarks
+ * The callback also fires for nested objects, so `item` is whichever object the pair
+ * belongs to rather than the one that was passed in.
  */
 export function deepApply<T extends Record<any, any>>(
   data: T,
-  callback: (item: T, key: keyof T, value: T[keyof T]) => void,
+  callback: (item: Record<string, any>, key: string, value: any) => void,
 ): void {
   for (const [key, value] of Object.entries(data)) {
     callback(data, key, value)
