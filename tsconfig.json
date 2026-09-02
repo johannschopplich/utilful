@@ -4,6 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
+    "types": ["node"],
     "noUncheckedIndexedAccess": true,
     "declaration": true,
     "noEmit": true,

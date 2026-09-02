@@ -15,6 +15,7 @@
     "url": "https://github.com/johannschopplich/utilful/issues"
   },
   "keywords": [
+    "cli",
     "csv",
     "defu",
     "emitter",
@@ -32,6 +33,14 @@
     "./array": {
       "types": "./dist/array.d.mts",
       "default": "./dist/array.mjs"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.mts",
+      "default": "./dist/cli/index.mjs"
+    },
+    "./cli/testing": {
+      "types": "./dist/cli/testing.d.mts",
+      "default": "./dist/cli/testing.mjs"
     },
     "./csv": {
       "types": "./dist/csv.d.mts",
@@ -85,6 +94,14 @@
     "test": "vitest",
     "test:types": "tsc --noEmit",
     "release": "bumpp"
+  },
+  "peerDependencies": {
+    "vitest": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.1.0",

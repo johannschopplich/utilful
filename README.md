@@ -7,6 +7,7 @@ A collection of TypeScript utilities that I use across my projects.
 - [Installation](#installation)
 - [API](#api)
   - [Array](#array)
+  - [CLI](#cli)
   - [CSV](#csv)
   - [Defu](#defu)
   - [Emitter](#emitter)
@@ -37,6 +38,8 @@ import { defu } from 'utilful' // Everything
 import { joinURL } from 'utilful/path' // Just the path helpers
 ```
 
+The `cli` module is the exception: it is Node-only (22.13 or later) and lives on its subpaths `utilful/cli` and `utilful/cli/testing` alone.
+
 ## API
 
 ### Array
@@ -49,6 +52,81 @@ Converts `MaybeArray<T>` to `Array<T>`.
 type MaybeArray<T> = T | T[]
 
 declare function toArray<T>(array?: MaybeArray<T> | null | undefined): T[]
+```
+
+### CLI
+
+A command runner on top of Node's `util.parseArgs`: strict option parsing, one level of sub-commands, `--help` and `--version`, and an error boundary that prints a recognized error as a message and anything else with its stack.
+
+#### `defineCommand`
+
+Types a command definition for the `args` its `run` receives. A `string` option arrives as `string | undefined` unless it is `required` or has a `default`, a `boolean` option as `boolean` (`false` when absent, and `--no-<name>` turns it off), and every positional lands in `args._` as well. A `valueHint` names the value of a `string` option in the help, as in `--out-dir=<path>`.
+
+```ts
+import { CliError, commonArgs, defineCommand } from 'utilful/cli'
+
+const build = defineCommand({
+  meta: { name: 'build', description: 'Compile the entry file' },
+  args: {
+    ...commonArgs, // Adds --verbose
+    'file': { type: 'positional', description: 'Entry file', required: true },
+    'out-dir': { type: 'string', alias: 'd', description: 'Output directory', valueHint: 'path' },
+    'watch': { type: 'boolean', alias: 'w', description: 'Rebuild on change' },
+  },
+  run({ args }) {
+    if (args.watch && args['out-dir'] === undefined)
+      throw new CliError('--watch needs an --out-dir') // Printed as a message, no stack
+  },
+})
+```
+
+#### `runMain`
+
+Runs a command tree from `process.argv`, or from `argv` when given, and sets `process.exitCode` instead of exiting. Requested help goes to stdout; usage after a wrong argument goes to stderr with the message. Options may stand before or after a sub-command name, and a tree with a `run` of its own runs it when no sub-command is named. `-h` and `-v` belong to `--help` and `--version`, so no option may take either letter as its alias.
+
+```ts
+declare function runMain(command: CommandDef, options?: RunMainOptions): Promise<void>
+
+interface RunMainOptions {
+  argv?: readonly string[]
+  /** Error classes the CLI raises deliberately besides `CliError`. */
+  expectedErrors?: readonly ErrorClass[]
+  /** Renders an error for a human where its message alone is not the best account of it; `undefined` falls back to the message. */
+  describe?: (error: Error) => string | undefined
+}
+```
+
+**Example:**
+
+```ts
+import { defineCommand, runMain } from 'utilful/cli'
+
+const main = defineCommand({
+  meta: { name: 'tool', version: '1.0.0', description: 'Does things' },
+  subCommands: { build },
+})
+
+void runMain(main, { expectedErrors: [MyLibraryError] })
+```
+
+Also exported: `runCommand` (runs the tree and throws instead of reporting), `parseArgs`, `reportFailure` (for a failure that outlives `run`, such as a watch rebuild), and `log` with `error`, `warn`, `info`, `success` and `blankLine`, all writing to stderr.
+
+#### `createCliHarness`
+
+From `utilful/cli/testing`, which needs `vitest`. Returns `runCli`, which runs the tree in-process and captures both streams and the exit code, and `runCliProcess`, which runs the entry file as a child process. `useTemporaryDirectories` and `mockStdin` ship alongside.
+
+```ts
+import { createCliHarness, useTemporaryDirectories } from 'utilful/cli/testing'
+
+const { runCli, runCliProcess } = createCliHarness(main, { entry: 'src/entry.ts' }) // `entry` only matters to `runCliProcess`
+const createDirectory = useTemporaryDirectories()
+
+it('rejects an unknown option', async () => {
+  const { stderr, exitCode } = await runCli(['build', 'x.js', '--typo'])
+
+  expect(stderr).toContain('Unknown option \'--typo\'')
+  expect(exitCode).toBe(1)
+})
 ```
 
 ### CSV
