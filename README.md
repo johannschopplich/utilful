@@ -56,11 +56,11 @@ declare function toArray<T>(array?: MaybeArray<T> | null | undefined): T[]
 
 ### CLI
 
-A command runner on top of Node's `util.parseArgs`: strict option parsing, one level of sub-commands, `--help` and `--version`, and an error boundary that prints a recognized error as a message and anything else with its stack.
+A command runner on top of Node's `util.parseArgs`: strict option parsing, one level of sub-commands, `--help` and `--version`, and an error boundary that prints a recognized error as a message and anything else with its stack. `-h` and `-v` belong to the runner, so no option may take either letter as its alias.
 
 #### `defineCommand`
 
-Types a command definition for the `args` its `run` receives. A `string` option arrives as `string | undefined` unless it is `required` or has a `default`, a `boolean` option as `boolean` (`false` when absent, and `--no-<name>` turns it off), and every positional lands in `args._` as well. A `valueHint` names the value of a `string` option in the help, as in `--out-dir=<path>`.
+Types a command definition, so `run` receives its `args` typed by their definitions.
 
 ```ts
 import { CliError, commonArgs, defineCommand } from 'utilful/cli'
@@ -69,9 +69,9 @@ const build = defineCommand({
   meta: { name: 'build', description: 'Compile the entry file' },
   args: {
     ...commonArgs, // Adds --verbose
-    'file': { type: 'positional', description: 'Entry file', required: true },
-    'out-dir': { type: 'string', alias: 'd', description: 'Output directory', valueHint: 'path' },
-    'watch': { type: 'boolean', alias: 'w', description: 'Rebuild on change' },
+    'file': { type: 'positional', description: 'Entry file', required: true }, // string
+    'out-dir': { type: 'string', alias: 'd', description: 'Output directory', valueHint: 'path' }, // string | undefined
+    'watch': { type: 'boolean', alias: 'w', description: 'Rebuild on change' }, // boolean, --no-watch turns it off
   },
   run({ args }) {
     if (args.watch && args['out-dir'] === undefined)
@@ -82,21 +82,7 @@ const build = defineCommand({
 
 #### `runMain`
 
-Runs a command tree from `process.argv`, or from `argv` when given, and sets `process.exitCode` instead of exiting. Requested help goes to stdout; usage after a wrong argument goes to stderr with the message. Options may stand before or after a sub-command name, and a tree with a `run` of its own runs it when no sub-command is named. `-h` and `-v` belong to `--help` and `--version`, so no option may take either letter as its alias.
-
-```ts
-declare function runMain(command: CommandDef, options?: RunMainOptions): Promise<void>
-
-interface RunMainOptions {
-  argv?: readonly string[]
-  /** Error classes the CLI raises deliberately besides `CliError`. */
-  expectedErrors?: readonly ErrorClass[]
-  /** Renders an error for a human where its message alone is not the best account of it; `undefined` falls back to the message. */
-  describe?: (error: Error) => string | undefined
-}
-```
-
-**Example:**
+Runs a command tree from `process.argv`, or from `argv` when given, and sets `process.exitCode` instead of exiting. A tree with a `run` of its own runs it when no sub-command is named.
 
 ```ts
 import { defineCommand, runMain } from 'utilful/cli'
@@ -106,14 +92,14 @@ const main = defineCommand({
   subCommands: { build },
 })
 
-void runMain(main, { expectedErrors: [MyLibraryError] })
+void runMain(main, { expectedErrors: [MyLibraryError] }) // Reported like a `CliError`
 ```
 
 Also exported: `runCommand` (runs the tree and throws instead of reporting), `parseArgs`, `reportFailure` (for a failure that outlives `run`, such as a watch rebuild), and `log` with `error`, `warn`, `info`, `success` and `blankLine`, all writing to stderr.
 
 #### `createCliHarness`
 
-From `utilful/cli/testing`, which needs `vitest`. Returns `runCli`, which runs the tree in-process and captures both streams and the exit code, and `runCliProcess`, which runs the entry file as a child process. `useTemporaryDirectories` and `mockStdin` ship alongside.
+From `utilful/cli/testing`, which needs `vitest`. `runCli` runs the tree in-process and captures both streams and the exit code, `runCliProcess` runs the entry file as a child process. `useTemporaryDirectories` and `mockStdin` ship alongside.
 
 ```ts
 import { createCliHarness, useTemporaryDirectories } from 'utilful/cli/testing'
