@@ -24,7 +24,7 @@ describe('usage', () => {
   it('lists the commands of a tree', async () => {
     const { stdout } = await runCli(['--help'])
 
-    expect(stdout).toContain('A command tree (probe v1.2.3)')
+    expect(stdout.split('\n').slice(0, 2)).toEqual(['probe v1.2.3', 'A command tree'])
     expect(stdout).toContain('USAGE')
     expect(stdout).toContain('probe build')
     expect(stdout).toContain('Build the entry file')
@@ -35,7 +35,7 @@ describe('usage', () => {
     const { stdout } = await runCli(['build', '--help'])
 
     expect(stdout).toContain('probe build [OPTIONS] <FILE> --token=<secret>')
-    expect(stdout).toContain('(probe build v1.2.3)')
+    expect(stdout.split('\n')[0]).toBe('probe build v1.2.3')
   })
 
   it('renders every spelling and hint of an option', async () => {

@@ -13,7 +13,7 @@ export interface RenderUsageOptions {
 
 export function renderUsage<T extends ArgsDef>(command: CommandDef<T>, { parent, stream = process.stdout }: RenderUsageOptions = {}): string {
   const color = (style: Style, text: string): string => paint(style, text, stream)
-  const heading = (title: string): string => color(['bold', 'underline'], title)
+  const heading = (title: string): string => color('bold', title)
 
   const meta = command.meta ?? {}
   const parentMeta = parent?.meta ?? {}
@@ -46,7 +46,7 @@ export function renderUsage<T extends ArgsDef>(command: CommandDef<T>, { parent,
       .filter(spelling => spelling !== undefined)
       .join(', ')
     const value = definition.type === 'string' ? `<${definition.valueHint ?? name}>` : undefined
-    optionLines.push([color('cyan', value === undefined ? spellings : `${spellings}=${value}`), hints])
+    optionLines.push([color('cyan', spellings) + (value === undefined ? '' : color('dim', `=${value}`)), hints])
 
     if (definition.type === 'boolean' && definition.default === true)
       optionLines.push([color('cyan', `--no-${name}`), ''])
@@ -66,9 +66,10 @@ export function renderUsage<T extends ArgsDef>(command: CommandDef<T>, { parent,
     usageLine.push(Object.keys(command.subCommands!).join('|'))
 
   const lines: string[] = [
-    color('gray', `${meta.description ?? ''} (${commandName}${version === undefined ? '' : ` v${version}`})`),
+    color('bold', version === undefined ? commandName : `${commandName} v${version}`),
+    ...meta.description === undefined ? [] : [meta.description],
     '',
-    `${heading('USAGE')} ${color('cyan', [commandName, hasArguments ? '[OPTIONS]' : undefined, ...usageLine].filter(part => part !== undefined).join(' '))}`,
+    `${heading('USAGE')}  ${color('cyan', [commandName, hasArguments ? '[OPTIONS]' : undefined, ...usageLine].filter(part => part !== undefined).join(' '))}`,
     '',
   ]
 
