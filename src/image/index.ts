@@ -48,10 +48,8 @@ export async function toReducedBlob(blob: Blob, options: ReducedBlobOptions = {}
   if (!maxDimension && !type && !stripMetadata)
     return blob
 
-  if (!blob.type.startsWith('image/'))
-    throw new TypeError(`Expected an image, but got: ${blob.type || 'unknown type'}`)
-
   const outputType = type ?? (isReducedBlobType(blob.type) ? blob.type : 'image/jpeg')
+  // Detects the format from the bytes, whatever `blob.type` says, and rejects anything else
   const source = await createImageBitmap(blob)
   let resized: ImageBitmap | undefined
 
