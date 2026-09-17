@@ -29,6 +29,11 @@ describe('defu', () => {
     expect(result).toEqual({ a: 'c', d: 'c' })
   })
 
+  it('keeps the source value over a null default', () => {
+    const result = defu({ a: 'c' }, { a: null as null, d: 'c' })
+    expect(result).toEqual({ a: 'c', d: 'c' })
+  })
+
   it('merges nested objects', () => {
     const result = defu({ a: { b: 'c' } }, { a: { d: 'e' } })
     expect(result).toEqual({
@@ -43,20 +48,32 @@ describe('defu', () => {
     })
   })
 
+  it('concatenates object items without merging them', () => {
+    const sourceItem = { name: 'Name', age: 21 }
+    const defaultItem = { name: 'Name', age: '42' }
+    const result = defu({ items: [sourceItem] }, { items: [defaultItem] })
+    expect(result).toEqual({ items: [sourceItem, defaultItem] })
+  })
+
   it.each([
-    { label: 'class instance', source: new Wrapper('a'), defaults: new Wrapper('b') },
-    { label: 'Date', source: new Date('2020-01-01'), defaults: new Date('2020-01-02') },
-    { label: 'function', source: () => 42, defaults: /test/i },
-  ])('keeps a source $label instead of merging it', ({ source, defaults }) => {
+    ['class instance', new Wrapper('a'), new Wrapper('b')],
+    ['Date', new Date('2020-01-01'), new Date('2020-01-02')],
+  ])('keeps a source %s instead of merging it', (_, source, defaults) => {
     const result = defu({ value: source }, { value: defaults })
     expect(result.value).toBe(source)
   })
 
-  it.each(nonObjectValues)('returns the defaults for a non-object source $value', ({ value }) => {
+  it('keeps a source function over a RegExp default', () => {
+    const source = () => 42
+    const result = defu({ value: source }, { value: /test/i })
+    expect(result.value).toBe(source)
+  })
+
+  it.each(nonObjectValues)('returns the defaults for source $value', ({ value }) => {
     expect(defu(value as any, { d: true })).toEqual({ d: true })
   })
 
-  it.each(nonObjectValues)('returns the source for non-object defaults $value', ({ value }) => {
+  it.each(nonObjectValues)('returns the source for defaults $value', ({ value }) => {
     expect(defu({ d: true }, value as any)).toEqual({ d: true })
   })
 
@@ -159,26 +176,26 @@ describe('defu', () => {
 
 describe('createDefu', () => {
   it('skips the default merge when merger returns true', () => {
-    const ext = createDefu((obj, key, val) => {
-      if (typeof val === 'number') {
-        (obj as any)[key] += val
+    const defuWithSum = createDefu((target, key, value) => {
+      if (typeof value === 'number') {
+        (target as any)[key] += value
         return true
       }
     })
-    expect(ext({ cost: 15 }, { cost: 10 })).toEqual({ cost: 25 })
+    expect(defuWithSum({ cost: 15 }, { cost: 10 })).toEqual({ cost: 25 })
   })
 
   it('passes the dotted namespace to merger', () => {
-    const ext = createDefu((obj, key, val, namespace) => {
+    const defuWithNamespace = createDefu((target, key, value, namespace) => {
       if (key === 'modules') {
-        obj[key] = `${namespace}:${[...val, ...obj[key]].sort().join(',')}`
+        target[key] = `${namespace}:${[...value, ...target[key]].sort().join(',')}`
         return true
       }
     })
 
-    const obj1 = { modules: ['A'], foo: { bar: { modules: ['X'] } } }
-    const obj2 = { modules: ['B'], foo: { bar: { modules: ['Y'] } } }
-    expect(ext(obj1, obj2)).toEqual({
+    const source = { modules: ['A'], foo: { bar: { modules: ['X'] } } }
+    const defaults = { modules: ['B'], foo: { bar: { modules: ['Y'] } } }
+    expect(defuWithNamespace(source, defaults)).toEqual({
       modules: ':A,B',
       foo: { bar: { modules: 'foo.bar:X,Y' } },
     })
