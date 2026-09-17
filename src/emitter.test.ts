@@ -37,6 +37,17 @@ describe('createEmitter', () => {
     expect(emitter.events).toBe(events)
   })
 
+  it('creates its own events map without an argument', () => {
+    const ownEmitter = createEmitter<Events>()
+    const handler = vi.fn()
+
+    ownEmitter.on('foo', handler)
+    ownEmitter.emit('foo', 'event')
+
+    expect(ownEmitter.events).toBeInstanceOf(Map)
+    expect(handler).toHaveBeenCalledExactlyOnceWith('event')
+  })
+
   describe('on', () => {
     it('keeps the handlers of two symbols with the same description apart', () => {
       const event = { a: 'b' }
@@ -102,6 +113,16 @@ describe('createEmitter', () => {
       expect(barHandler).toHaveBeenCalledOnce()
     })
 
+    it('keeps the other handlers when removing a handler that was never registered', () => {
+      const handler = vi.fn()
+
+      emitter.on('foo', handler)
+      emitter.off('foo', vi.fn())
+      emitter.emit('foo', undefined)
+
+      expect(handler).toHaveBeenCalledOnce()
+    })
+
     it('keeps a handler registered under a type that differs in case', () => {
       const handler = vi.fn()
 
@@ -134,6 +155,28 @@ describe('createEmitter', () => {
 
       expect(titleCaseHandler).toHaveBeenCalledExactlyOnceWith('Foo arg')
       expect(upperCaseHandler).not.toHaveBeenCalled()
+    })
+
+    it('still invokes the next handler when a handler calls off for itself', () => {
+      const selfRemovingHandler = vi.fn(() => emitter.off('foo', selfRemovingHandler))
+      const nextHandler = vi.fn()
+
+      emitter.on('foo', selfRemovingHandler)
+      emitter.on('foo', nextHandler)
+      emitter.emit('foo', undefined)
+
+      expect(nextHandler).toHaveBeenCalledOnce()
+    })
+
+    it('invokes * handlers after the handlers of the type', () => {
+      const typeHandler = vi.fn()
+      const wildcardHandler = vi.fn()
+
+      emitter.on('*', wildcardHandler)
+      emitter.on('foo', typeHandler)
+      emitter.emit('foo', undefined)
+
+      expect(typeHandler).toHaveBeenCalledBefore(wildcardHandler)
     })
 
     it('invokes * handlers with the type and event of each emit', () => {
