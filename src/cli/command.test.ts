@@ -136,6 +136,12 @@ describe('error reporting', () => {
 
     expect(stderr).toContain('plain string failure')
   })
+
+  it('exits with code 1 after a thrown string', async () => {
+    const { exitCode } = await reportFor('plain string failure')
+
+    expect(exitCode).toBe(1)
+  })
 })
 
 describe('help', () => {
@@ -192,6 +198,12 @@ describe('dispatch', () => {
     const { stderr } = await runCli(['biuld', 'x.js'])
 
     expect(stderr).toContain('Unknown command: biuld')
+  })
+
+  it('exits with code 1 after an unknown command', async () => {
+    const { exitCode } = await runCli(['biuld', 'x.js'])
+
+    expect(exitCode).toBe(1)
   })
 
   it('reads build after a.txt as an operand, not a command', async () => {

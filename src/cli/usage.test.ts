@@ -33,38 +33,53 @@ describe('usage', () => {
     expect(treeUsage.split('\n').slice(0, 2)).toEqual(['probe v1.2.3', 'A command tree'])
   })
 
+  it('lists subCommands on the USAGE line', () => {
+    expect(treeUsage).toContain('USAGE  probe build\n')
+  })
+
   it('lists subCommands with their descriptions', () => {
-    expect(treeUsage).toMatch(/^\s+build\s+Build the entry file$/m)
+    expect(treeUsage).toMatch(/^ +build +Build the entry file$/m)
   })
 
   it('points to probe <command> --help at the end', () => {
     expect(treeUsage.trimEnd().split('\n').at(-1)).toContain('probe <command> --help')
   })
 
-  it('prefixes a sub-command with the name of its parent', () => {
-    expect(buildUsage).toContain('USAGE  probe build [OPTIONS] <FILE> --token=<secret>')
+  it('prefixes a subCommands entry with the name of its parent', () => {
+    expect(buildUsage).toMatch(/^USAGE {2}probe build /m)
+  })
+
+  it('lists [OPTIONS], <FILE> and a required --token=<secret> on the USAGE line', () => {
+    expect(buildUsage).toMatch(/^USAGE {2}probe build \[OPTIONS\] <FILE> --token=<secret>$/m)
   })
 
   it('inherits the version of the parent', () => {
     expect(buildUsage.split('\n')[0]).toBe('probe build v1.2.3')
   })
 
-  it.each([
-    '-d, --out-dir=<out-dir>',
-    '(Default: dist)',
-    '--no-watch',
-    '(Required)',
-  ])('lists %s', (text) => {
-    expect(buildUsage).toContain(text)
+  it('lists -d beside --out-dir', () => {
+    expect(buildUsage).toMatch(/^ +-d, --out-dir=<out-dir> +Output directory/m)
+  })
+
+  it('shows (Default: dist) for --out-dir', () => {
+    expect(buildUsage).toMatch(/^ +-d, --out-dir=<out-dir> +Output directory \(Default: dist\)$/m)
+  })
+
+  it('lists --no-watch for a boolean that defaults to true', () => {
+    expect(buildUsage).toMatch(/^ +--watch +Rebuild on change \(Default: true\)\n +--no-watch$/m)
+  })
+
+  it('marks --token as (Required)', () => {
+    expect(buildUsage).toMatch(/^ +--token=<secret> +API token \(Required\)$/m)
   })
 
   it('names the value of --token after its valueHint', () => {
-    expect(buildUsage).toMatch(/^\s+--token=<secret>\s+API token/m)
+    expect(buildUsage).toMatch(/^ +--token=<secret> +API token/m)
     expect(buildUsage).not.toContain('<token>')
   })
 
-  it('omits (Default: false) from a boolean', () => {
-    expect(buildUsage).not.toContain('(Default: false)')
+  it('omits (Default: false) from --json', () => {
+    expect(buildUsage).toMatch(/^ +--json +Print JSON$/m)
   })
 
   it('starts every description in the same column', () => {
