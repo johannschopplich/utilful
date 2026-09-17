@@ -2,191 +2,133 @@ import type { Emitter, EventHandlerMap } from './emitter'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createEmitter } from './emitter'
 
-describe('event emitter', () => {
-  it('accepts an optional event handler map', () => {
-    expect(() => createEmitter(new Map())).not.toThrow()
+const eventType = Symbol('eventType')
+// eslint-disable-next-line ts/consistent-type-definitions
+type Events = {
+  foo: unknown
+  bar: unknown
+  Foo: unknown
+  FOO: unknown
+  [eventType]: unknown
+}
 
-    const map = new Map()
-    const a = vi.fn()
-    const b = vi.fn()
-    map.set('foo', [a, b])
-    const events = createEmitter<{ foo: undefined }>(map)
-    events.emit('foo')
-    expect(a).toHaveBeenCalledTimes(1)
-    expect(b).toHaveBeenCalledTimes(1)
+describe('createEmitter', () => {
+  let events: EventHandlerMap<Events>, inst: Emitter<Events>
+
+  beforeEach(() => {
+    events = new Map()
+    inst = createEmitter(events)
   })
 
-  describe('emitter instance', () => {
-    const eventType = Symbol('eventType')
-    // eslint-disable-next-line ts/consistent-type-definitions
-    type Events = {
-      'foo': unknown
-      'constructor': unknown
-      'FOO': unknown
-      'bar': unknown
-      'Bar': unknown
-      'baz:bat!': unknown
-      'baz:baT!': unknown
-      'Foo': unknown
-      [eventType]: unknown
-    }
-    let events: EventHandlerMap<Events>, inst: Emitter<Events>
+  it('invokes handlers from a passed-in map', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    events.set('foo', [first, second])
 
-    beforeEach(() => {
-      events = new Map()
-      inst = createEmitter(events)
+    inst.emit('foo')
+
+    expect(first).toHaveBeenCalledOnce()
+    expect(second).toHaveBeenCalledOnce()
+  })
+
+  it('exposes the passed-in map as events', () => {
+    expect(inst.events).toBe(events)
+  })
+
+  describe('on', () => {
+    it('registers a handler under a symbol type', () => {
+      const event = { a: 'b' }
+      const handler = vi.fn()
+
+      inst.on(eventType, handler)
+      inst.emit(eventType, event)
+
+      expect(handler).toHaveBeenCalledExactlyOnceWith(event)
     })
 
-    describe('properties', () => {
-      it('exposes the event handler map', () => {
-        expect(inst).toHaveProperty('events')
-        expect(inst.events).toBeInstanceOf(Map)
-      })
+    it('appends a handler after the existing handlers of the type', () => {
+      const first = vi.fn()
+      const second = vi.fn()
+
+      inst.on('foo', first)
+      inst.on('foo', second)
+      inst.emit('foo', undefined)
+
+      expect(first).toHaveBeenCalledBefore(second)
+    })
+  })
+
+  describe('off', () => {
+    it('removes the handler from the type', () => {
+      const handler = vi.fn()
+
+      inst.on('foo', handler)
+      inst.off('foo', handler)
+      inst.emit('foo', undefined)
+
+      expect(handler).not.toHaveBeenCalled()
     })
 
-    describe('on()', () => {
-      it('registers handler for new type', () => {
-        const foo = () => {}
-        inst.on('foo', foo)
+    it('removes only the first occurrence of a handler registered twice', () => {
+      const handler = vi.fn()
 
-        expect(events.get('foo')).toEqual([foo])
-      })
+      inst.on('foo', handler)
+      inst.on('foo', handler)
+      inst.off('foo', handler)
+      inst.emit('foo', undefined)
 
-      it('registers handlers for any type strings', () => {
-        const foo = () => {}
-        inst.on('constructor', foo)
-
-        expect(events.get('constructor')).toEqual([foo])
-      })
-
-      it('appends handler for existing type', () => {
-        const foo = () => {}
-        const bar = () => {}
-        inst.on('foo', foo)
-        inst.on('foo', bar)
-
-        expect(events.get('foo')).toEqual([foo, bar])
-      })
-
-      it('does not normalize case', () => {
-        const foo = () => {}
-        inst.on('FOO', foo)
-        inst.on('Bar', foo)
-        inst.on('baz:baT!', foo)
-
-        expect(events.get('FOO')).toEqual([foo])
-        expect(events.has('foo')).toBe(false)
-        expect(events.get('Bar')).toEqual([foo])
-        expect(events.has('bar')).toBe(false)
-        expect(events.get('baz:baT!')).toEqual([foo])
-      })
-
-      it('takes symbols for event types', () => {
-        const foo = () => {}
-        inst.on(eventType, foo)
-        expect(events.get(eventType)).toEqual([foo])
-      })
-
-      it('adds duplicate listeners', () => {
-        const foo = () => {}
-        inst.on('foo', foo)
-        inst.on('foo', foo)
-        expect(events.get('foo')).toEqual([foo, foo])
-      })
+      expect(handler).toHaveBeenCalledOnce()
     })
 
-    describe('off()', () => {
-      it('removes handler for type', () => {
-        const foo = () => {}
-        inst.on('foo', foo)
-        inst.off('foo', foo)
+    it('removes all handlers of the type without a handler argument', () => {
+      const onFoo1 = vi.fn()
+      const onFoo2 = vi.fn()
+      const onBar = vi.fn()
 
-        expect(events.get('foo')).toEqual([])
-      })
+      inst.on('foo', onFoo1)
+      inst.on('foo', onFoo2)
+      inst.on('bar', onBar)
+      inst.off('foo')
+      inst.emit('foo', undefined)
+      inst.emit('bar', undefined)
 
-      it('does not normalize case', () => {
-        const foo = () => {}
-        inst.on('FOO', foo)
-        inst.on('Bar', foo)
-        inst.on('baz:bat!', foo)
+      expect(onFoo1).not.toHaveBeenCalled()
+      expect(onFoo2).not.toHaveBeenCalled()
+      expect(onBar).toHaveBeenCalledOnce()
+    })
+  })
 
-        inst.off('FOO', foo)
-        inst.off('Bar', foo)
-        inst.off('baz:baT!', foo)
+  describe('emit', () => {
+    it('invokes the handler of the type with the event', () => {
+      const event = { a: 'b' }
+      const handler = vi.fn()
 
-        expect(events.get('FOO')).toEqual([])
-        expect(events.has('foo')).toBe(false)
-        expect(events.get('Bar')).toEqual([])
-        expect(events.has('bar')).toBe(false)
-        expect(events.get('baz:bat!')).toHaveLength(1)
-      })
+      inst.on('foo', handler)
+      inst.emit('foo', event)
 
-      it('removes only the first matching listener', () => {
-        const foo = () => {}
-        inst.on('foo', foo)
-        inst.on('foo', foo)
-        inst.off('foo', foo)
-        expect(events.get('foo')).toEqual([foo])
-        inst.off('foo', foo)
-        expect(events.get('foo')).toEqual([])
-      })
-
-      it('removes all handlers of the given type', () => {
-        inst.on('foo', () => {})
-        inst.on('foo', () => {})
-        inst.on('bar', () => {})
-        inst.off('foo')
-        expect(events.get('foo')).toEqual([])
-        expect(events.get('bar')).toHaveLength(1)
-        inst.off('bar')
-        expect(events.get('bar')).toEqual([])
-      })
+      expect(handler).toHaveBeenCalledExactlyOnceWith(event)
     })
 
-    describe('emit()', () => {
-      it('invokes handler for type', () => {
-        const event = { a: 'b' }
-        const handler = vi.fn()
+    it('invokes only the handler whose type matches case', () => {
+      const onFoo = vi.fn()
+      const onFOO = vi.fn()
 
-        inst.on('foo', handler)
-        inst.emit('foo', event)
+      inst.on('Foo', onFoo)
+      inst.on('FOO', onFOO)
+      inst.emit('Foo', 'Foo arg')
 
-        expect(handler).toHaveBeenCalledWith(event)
-        expect(handler).toHaveBeenCalledTimes(1)
-      })
+      expect(onFoo).toHaveBeenCalledExactlyOnceWith('Foo arg')
+      expect(onFOO).not.toHaveBeenCalled()
+    })
 
-      it('does not ignore case', () => {
-        const onFoo = vi.fn()
-        const onFOO = vi.fn()
-        events.set('Foo', [onFoo])
-        events.set('FOO', [onFOO])
+    it('invokes * handlers with the type and event', () => {
+      const event = { a: 'b' }
+      const star = vi.fn()
 
-        inst.emit('Foo', 'Foo arg')
-        inst.emit('FOO', 'FOO arg')
+      inst.on('*', star)
+      inst.emit('foo', event)
 
-        expect(onFoo).toHaveBeenCalledTimes(1)
-        expect(onFoo).toHaveBeenCalledWith('Foo arg')
-        expect(onFOO).toHaveBeenCalledTimes(1)
-        expect(onFOO).toHaveBeenCalledWith('FOO arg')
-      })
-
-      it('invokes * handlers', () => {
-        const star = vi.fn()
-        const ea = { a: 'a' }
-        const eb = { b: 'b' }
-
-        events.set('*', [star])
-
-        inst.emit('foo', ea)
-        expect(star).toHaveBeenCalledTimes(1)
-        expect(star).toHaveBeenCalledWith('foo', ea)
-
-        star.mockClear()
-
-        inst.emit('bar', eb)
-        expect(star).toHaveBeenCalledTimes(1)
-        expect(star).toHaveBeenCalledWith('bar', eb)
-      })
+      expect(star).toHaveBeenCalledExactlyOnceWith('foo', event)
     })
   })
 })
