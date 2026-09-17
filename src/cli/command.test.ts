@@ -153,6 +153,13 @@ describe('help', () => {
     expect(exitCode).toBe(0)
   })
 
+  it('writes usage to stderr after an unknown command', async () => {
+    const { stdout, stderr } = await runCli(['biuld'])
+
+    expect(stdout).toBe('')
+    expect(stderr).toContain('USAGE')
+  })
+
   it('writes usage to stderr after a missing <FILE>', async () => {
     const { stdout, stderr } = await runCli(['build'])
 
