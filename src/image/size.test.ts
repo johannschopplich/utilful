@@ -9,7 +9,7 @@ describe('getReducedSize', () => {
   it.each([
     { width: 1000, height: 800 },
     { width: 2048, height: 1024 },
-  ])('keeps $width×$height within maxDimension 2048', (size) => {
+  ])('keeps $width×$height that fits maxDimension 2048', (size) => {
     expect(getReducedSize(size, 2048)).toEqual(size)
   })
 

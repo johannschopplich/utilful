@@ -349,8 +349,9 @@ describe('parseCSV', () => {
   })
 
   it.each([
+    ['consecutive delimiters', 'name,age,,city\nJohn,30,,New York'],
     ['a trailing delimiter', 'name,age,\nJohn,30,value'],
-    ['a delimiter after a byte order mark', '﻿,age\nJohn,30'],
+    ['a delimiter after a byte order mark', '\uFEFF,age\nJohn,30'],
   ])('throws SyntaxError for an empty column name from %s', (_label, csv) => {
     expect(() => parseCSV(csv)).toThrow(SyntaxError)
     expect(() => parseCSV(csv)).toThrow(/CSV header row contains empty column name/)
@@ -370,7 +371,7 @@ describe('parseCSV', () => {
   })
 
   it('strips a leading byte order mark', () => {
-    const csv = '﻿name,age\nJohn,30'
+    const csv = '\uFEFFname,age\nJohn,30'
     expect(parseCSV(csv)).toEqual([
       { name: 'John', age: '30' },
     ])
@@ -411,7 +412,7 @@ describe('createCSVStream', () => {
     expect(chunks.join('')).toBe('name,age,city\nJohn,30,New York\nJane,25,Boston\nBob,40,Chicago\n')
   })
 
-  it('accepts an async iterable', async () => {
+  it('writes rows from an async iterable', async () => {
     async function* generateData() {
       yield* people
     }
@@ -433,6 +434,15 @@ describe('createCSVStream', () => {
 describe('createCSVAsync', () => {
   it('returns the CSV with a trailing line ending', async () => {
     const csv = await createCSVAsync(people, ['name', 'age'])
+    expect(csv).toBe('name,age\nJohn,30\nJane,25\nBob,40\n')
+  })
+
+  it('writes rows from an async iterable', async () => {
+    async function* generateData() {
+      yield* people
+    }
+
+    const csv = await createCSVAsync(generateData(), ['name', 'age'])
     expect(csv).toBe('name,age\nJohn,30\nJane,25\nBob,40\n')
   })
 })
@@ -479,7 +489,7 @@ describe('parseCSVStream', () => {
   })
 
   it('strips a leading byte order mark from the first chunk', async () => {
-    const chunks = ['﻿name,age\nJo', 'hn,30']
+    const chunks = ['\uFEFFname,age\nJo', 'hn,30']
     expect(await collect(parseCSVStream(chunks))).toEqual([{ name: 'John', age: '30' }])
   })
 
@@ -489,7 +499,7 @@ describe('parseCSVStream', () => {
     await expect(collect(parseCSVStream(chunks))).rejects.toThrow('CSV row 3 has 1 extra field(s)')
   })
 
-  it('accepts an async iterable', async () => {
+  it('parses rows from an async iterable', async () => {
     async function* generateChunks() {
       yield 'name,age\n'
       yield 'John,30\n'

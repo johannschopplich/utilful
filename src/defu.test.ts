@@ -1,12 +1,21 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { createDefu, defu } from './defu'
 
-class Test {
+class Wrapper {
   value: string
   constructor(value: string) {
     this.value = value
   }
 }
+
+const nonObjectValues = [
+  { value: null },
+  { value: undefined },
+  { value: [] },
+  { value: false },
+  { value: true },
+  { value: 123 },
+]
 
 // Part of tests brought from jonschlinkert/defaults-deep (MIT)
 describe('defu', () => {
@@ -35,7 +44,7 @@ describe('defu', () => {
   })
 
   it.each([
-    { label: 'class instance', source: new Test('a'), defaults: new Test('b') },
+    { label: 'class instance', source: new Wrapper('a'), defaults: new Wrapper('b') },
     { label: 'Date', source: new Date('2020-01-01'), defaults: new Date('2020-01-02') },
     { label: 'function', source: () => 42, defaults: /test/i },
   ])('keeps a source $label instead of merging it', ({ source, defaults }) => {
@@ -43,26 +52,16 @@ describe('defu', () => {
     expect(result.value).toBe(source)
   })
 
-  it.each([
-    { value: null },
-    { value: undefined },
-    { value: [] },
-    { value: false },
-    { value: true },
-    { value: 123 },
-  ])('returns the defaults for a non-object source $value', ({ value }) => {
+  it.each(nonObjectValues)('returns the defaults for a non-object source $value', ({ value }) => {
     expect(defu(value as any, { d: true })).toEqual({ d: true })
   })
 
-  it.each([
-    { value: null },
-    { value: undefined },
-    { value: [] },
-    { value: false },
-    { value: true },
-    { value: 123 },
-  ])('returns the source for non-object defaults $value', ({ value }) => {
+  it.each(nonObjectValues)('returns the source for non-object defaults $value', ({ value }) => {
     expect(defu({ d: true }, value as any)).toEqual({ d: true })
+  })
+
+  it('skips non-object defaults between object defaults', () => {
+    expect(defu({}, { foo: 1 }, false as any, 123 as any, { bar: 2 })).toEqual({ foo: 1, bar: 2 })
   })
 
   it('lets earlier arguments win across multiple defaults', () => {

@@ -13,11 +13,11 @@ type Events = {
 }
 
 describe('createEmitter', () => {
-  let events: EventHandlerMap<Events>, inst: Emitter<Events>
+  let events: EventHandlerMap<Events>, emitter: Emitter<Events>
 
   beforeEach(() => {
     events = new Map()
-    inst = createEmitter(events)
+    emitter = createEmitter(events)
   })
 
   it('invokes handlers from a passed-in map', () => {
@@ -25,14 +25,14 @@ describe('createEmitter', () => {
     const second = vi.fn()
     events.set('foo', [first, second])
 
-    inst.emit('foo')
+    emitter.emit('foo')
 
     expect(first).toHaveBeenCalledOnce()
     expect(second).toHaveBeenCalledOnce()
   })
 
   it('exposes the passed-in map as events', () => {
-    expect(inst.events).toBe(events)
+    expect(emitter.events).toBe(events)
   })
 
   describe('on', () => {
@@ -40,8 +40,8 @@ describe('createEmitter', () => {
       const event = { a: 'b' }
       const handler = vi.fn()
 
-      inst.on(eventType, handler)
-      inst.emit(eventType, event)
+      emitter.on(eventType, handler)
+      emitter.emit(eventType, event)
 
       expect(handler).toHaveBeenCalledExactlyOnceWith(event)
     })
@@ -50,9 +50,9 @@ describe('createEmitter', () => {
       const first = vi.fn()
       const second = vi.fn()
 
-      inst.on('foo', first)
-      inst.on('foo', second)
-      inst.emit('foo', undefined)
+      emitter.on('foo', first)
+      emitter.on('foo', second)
+      emitter.emit('foo', undefined)
 
       expect(first).toHaveBeenCalledBefore(second)
     })
@@ -62,9 +62,9 @@ describe('createEmitter', () => {
     it('removes the handler from the type', () => {
       const handler = vi.fn()
 
-      inst.on('foo', handler)
-      inst.off('foo', handler)
-      inst.emit('foo', undefined)
+      emitter.on('foo', handler)
+      emitter.off('foo', handler)
+      emitter.emit('foo', undefined)
 
       expect(handler).not.toHaveBeenCalled()
     })
@@ -72,10 +72,10 @@ describe('createEmitter', () => {
     it('removes only the first occurrence of a handler registered twice', () => {
       const handler = vi.fn()
 
-      inst.on('foo', handler)
-      inst.on('foo', handler)
-      inst.off('foo', handler)
-      inst.emit('foo', undefined)
+      emitter.on('foo', handler)
+      emitter.on('foo', handler)
+      emitter.off('foo', handler)
+      emitter.emit('foo', undefined)
 
       expect(handler).toHaveBeenCalledOnce()
     })
@@ -85,16 +85,26 @@ describe('createEmitter', () => {
       const onFoo2 = vi.fn()
       const onBar = vi.fn()
 
-      inst.on('foo', onFoo1)
-      inst.on('foo', onFoo2)
-      inst.on('bar', onBar)
-      inst.off('foo')
-      inst.emit('foo', undefined)
-      inst.emit('bar', undefined)
+      emitter.on('foo', onFoo1)
+      emitter.on('foo', onFoo2)
+      emitter.on('bar', onBar)
+      emitter.off('foo')
+      emitter.emit('foo', undefined)
+      emitter.emit('bar', undefined)
 
       expect(onFoo1).not.toHaveBeenCalled()
       expect(onFoo2).not.toHaveBeenCalled()
       expect(onBar).toHaveBeenCalledOnce()
+    })
+
+    it('keeps a handler registered under a type that differs in case', () => {
+      const handler = vi.fn()
+
+      emitter.on('foo', handler)
+      emitter.off('FOO', handler)
+      emitter.emit('foo', undefined)
+
+      expect(handler).toHaveBeenCalledOnce()
     })
   })
 
@@ -103,8 +113,8 @@ describe('createEmitter', () => {
       const event = { a: 'b' }
       const handler = vi.fn()
 
-      inst.on('foo', handler)
-      inst.emit('foo', event)
+      emitter.on('foo', handler)
+      emitter.emit('foo', event)
 
       expect(handler).toHaveBeenCalledExactlyOnceWith(event)
     })
@@ -113,9 +123,9 @@ describe('createEmitter', () => {
       const onFoo = vi.fn()
       const onFOO = vi.fn()
 
-      inst.on('Foo', onFoo)
-      inst.on('FOO', onFOO)
-      inst.emit('Foo', 'Foo arg')
+      emitter.on('Foo', onFoo)
+      emitter.on('FOO', onFOO)
+      emitter.emit('Foo', 'Foo arg')
 
       expect(onFoo).toHaveBeenCalledExactlyOnceWith('Foo arg')
       expect(onFOO).not.toHaveBeenCalled()
@@ -125,8 +135,8 @@ describe('createEmitter', () => {
       const event = { a: 'b' }
       const star = vi.fn()
 
-      inst.on('*', star)
-      inst.emit('foo', event)
+      emitter.on('*', star)
+      emitter.emit('foo', event)
 
       expect(star).toHaveBeenCalledExactlyOnceWith('foo', event)
     })

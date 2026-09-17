@@ -130,7 +130,7 @@ describe('result', () => {
       expect(ok(42).unwrap()).toBe(42)
     })
 
-    it('throws a custom message', () => {
+    it('throws the given message for an Err', () => {
       expect(() => err('fail').unwrap('custom message')).toThrow('custom message')
     })
 
@@ -144,7 +144,7 @@ describe('result', () => {
       expect(err('fail').unwrapErr()).toBe('fail')
     })
 
-    it('throws a custom message', () => {
+    it('throws the given message for an Ok', () => {
       expect(() => ok(42).unwrapErr('custom message')).toThrow('custom message')
     })
 
@@ -225,6 +225,26 @@ describe('result', () => {
     it('throws a TypeError when the function returns a promise', () => {
       expect(() => toResult(() => Promise.resolve(1))).toThrow(TypeError)
       expect(() => toResult(() => Promise.resolve(1))).toThrow(/Pass the promise itself/)
+    })
+  })
+
+  describe('chaining', () => {
+    it('applies each map in a chain from toResult to an Ok value', () => {
+      const doubledId = toResult(() => JSON.parse('{"id": 42}'))
+        .map((data: { id: number }) => data.id)
+        .map(id => id * 2)
+        .unwrapOr(0)
+
+      expect(doubledId).toBe(84)
+    })
+
+    it('skips each map in a chain from toResult on an Err', () => {
+      const doubledId = toResult(() => JSON.parse('{invalid}'))
+        .map((data: { id: number }) => data.id)
+        .map(id => id * 2)
+        .unwrapOr(0)
+
+      expect(doubledId).toBe(0)
     })
   })
 

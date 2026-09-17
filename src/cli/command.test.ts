@@ -82,7 +82,14 @@ describe('error reporting', () => {
   it('omits the stack of an ArgumentError even with --verbose', async () => {
     const { stderr } = await runCli(['build', '--verbose'])
 
+    expect(stderr).toContain('Missing required positional argument: FILE')
     expect(stderr).not.toMatch(STACK_FRAME)
+  })
+
+  it('exits with code 1 after an ArgumentError', async () => {
+    const { exitCode } = await runCli(['build'])
+
+    expect(exitCode).toBe(1)
   })
 
   it('prints the stack of a TypeError without --verbose', async () => {

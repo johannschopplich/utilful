@@ -178,6 +178,8 @@ describe('path', () => {
       { input: 'https://example.com/a/../b', out: '/a/../b' },
       // Relative paths and non-URL schemes are sliced, not URL-parsed.
       { input: 'foo', out: 'foo' },
+      { input: 'foo?bar', out: 'foo' },
+      { input: 'foo#bar', out: 'foo' },
       { input: 'mailto:someone@example.com', out: 'mailto:someone@example.com' },
     ])('extracts the pathname of $input as $out', ({ input, out }) => {
       expect(getPathname(input)).toBe(out)
