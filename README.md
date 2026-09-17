@@ -11,6 +11,7 @@ A collection of TypeScript utilities that I use across my projects.
   - [CSV](#csv)
   - [Defu](#defu)
   - [Emitter](#emitter)
+  - [Image](#image)
   - [JSON](#json)
   - [Module](#module)
   - [Object](#object)
@@ -38,7 +39,7 @@ import { defu } from 'utilful' // Everything
 import { joinURL } from 'utilful/path' // Just the path helpers
 ```
 
-The `cli` module is the exception: it is Node-only (22.13 or later) and lives on its subpaths `utilful/cli` and `utilful/cli/testing` alone.
+Two modules are the exception and live on their subpaths alone. `cli` is Node-only (22.13 or later) and ships as `utilful/cli` and `utilful/cli/testing`. `image` is browser-only and ships as `utilful/image`.
 
 ## API
 
@@ -426,6 +427,55 @@ emitter.events.clear()
 function onFoo() {}
 emitter.on('foo', onFoo) // Listen
 emitter.off('foo', onFoo) // Unlisten
+```
+
+### Image
+
+#### `toReducedBlob`
+
+Downscales an image blob so its longer side fits `maxDimension` and re-encodes it. Resizing happens in `createImageBitmap` with `resizeQuality: 'high'`, so the canvas only ever holds the reduced image.
+
+```ts
+type ReducedBlobType = 'image/jpeg' | 'image/png' | 'image/webp'
+
+interface ReducedBlobOptions {
+  /**
+   * Maximum width or height in pixels. Smaller images are never upscaled.
+   */
+  maxDimension?: number
+  /**
+   * MIME type of the output. Defaults to the source type if it is one of these, otherwise `image/jpeg`.
+   */
+  type?: ReducedBlobType
+  /**
+   * Encoder quality between 0 and 1, applied to JPEG and WebP.
+   * @default 0.85
+   */
+  quality?: number
+  /**
+   * Whether to re-encode an image that already has the right size and type, which drops EXIF data such as the location.
+   * @default false
+   */
+  stripMetadata?: boolean
+}
+
+declare function toReducedBlob(blob: Blob, options?: ReducedBlobOptions): Promise<Blob>
+```
+
+The original blob comes back untouched when the image already fits and the output type matches the source type. Anything else is re-encoded:
+
+- Re-encoding drops EXIF data such as the location. Set `stripMetadata` to re-encode an image that would otherwise be returned as it is.
+- Any other source type, like HEIC or GIF, becomes JPEG. Animation is lost and transparent pixels turn black – pass `type: 'image/png'` to keep transparency.
+- The function throws if the browser cannot encode the output type, rather than silently returning PNG. Safari cannot encode WebP, which includes a WebP source without an explicit `type`.
+- Re-encoding an image that is not resized draws it at full size. Safari on iOS 17 and earlier limits a canvas to 16.7 megapixels and throws beyond that, so pass `maxDimension` along for camera photos.
+
+**Example:**
+
+```ts
+import { toReducedBlob } from 'utilful/image'
+
+const reduced = await toReducedBlob(file, { maxDimension: 2048 })
+const webp = await toReducedBlob(file, { maxDimension: 1024, type: 'image/webp', quality: 0.8 })
 ```
 
 ### JSON
