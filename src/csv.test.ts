@@ -205,6 +205,10 @@ describe('parseCSV', () => {
     ])
   })
 
+  it('keeps non-ASCII characters in unquoted values', () => {
+    expect(parseCSV('emoji,word\n😀,café')).toEqual([{ emoji: '😀', word: 'café' }])
+  })
+
   it('parses a quoted value containing a delimiter', () => {
     const csv = 'name,city\n"Doe, John",New York\nJane,"Boston, MA"'
     expect(parseCSV(csv)).toEqual([
@@ -281,6 +285,10 @@ describe('parseCSV', () => {
       { name: 'John', age: '30' },
       { name: 'Jane', age: '25' },
     ])
+  })
+
+  it('reports row 3 for an extra field after CRLF line endings', () => {
+    expect(() => parseCSV('a,b\r\n1,2\r\n3,4,5')).toThrow('CSV row 3 has 1 extra field(s)')
   })
 
   it('skips empty rows', () => {
@@ -421,7 +429,7 @@ describe('createCSVStream', () => {
     expect(chunks.join('')).toBe('name,age\nJohn,30\nJane,25\nBob,40\n')
   })
 
-  it('applies delimiter, quoteAll, and addHeader', async () => {
+  it('writes quoted rows joined by delimiter \';\' without a header row', async () => {
     const chunks = await collect(createCSVStream(people, ['name', 'age'], {
       delimiter: ';',
       quoteAll: true,
@@ -465,26 +473,20 @@ describe('parseCSVStream', () => {
     ])
   })
 
-  it('treats a CRLF pair split across chunks as one line break', async () => {
-    const chunks = ['name,age\r', '\nJohn,30\r\nJane,25']
-    expect(await collect(parseCSVStream(chunks))).toEqual([
-      { name: 'John', age: '30' },
-      { name: 'Jane', age: '25' },
-    ])
-  })
-
   it('unescapes a quote pair split across chunks', async () => {
     const chunks = ['a\n"x"', '"y"']
     expect(await collect(parseCSVStream(chunks))).toEqual([{ a: 'x"y' }])
   })
 
-  it('yields the same rows as parseCSV at every chunk split point', async () => {
+  it('yields the same rows at every chunk split point', async () => {
     const csv = 'name,note\r\n"John ""JJ""","line1\nline2"\r\nJane, plain '
-    const expected = parseCSV(csv)
 
     for (let splitIndex = 1; splitIndex < csv.length; splitIndex++) {
       const chunks = [csv.slice(0, splitIndex), csv.slice(splitIndex)]
-      expect(await collect(parseCSVStream(chunks))).toEqual(expected)
+      expect(await collect(parseCSVStream(chunks))).toEqual([
+        { name: 'John "JJ"', note: 'line1\nline2' },
+        { name: 'Jane', note: ' plain ' },
+      ])
     }
   })
 
@@ -540,7 +542,7 @@ describe('round-trip', () => {
     expect(parseCSV(createCSV(data, ['value']))).toEqual(data)
   })
 
-  it('round-trips quoted fields from createCSVStream through parseCSVStream at arbitrary chunk boundaries', async () => {
+  it('round-trips quoted fields from createCSVStream through parseCSVStream split into three chunks', async () => {
     const data = [
       { name: 'John "Johnny" Doe', note: 'Line 1\nLine 2, with comma' },
       { name: 'Jane', note: 'He said "Hi"' },
