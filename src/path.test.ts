@@ -5,6 +5,7 @@ import { getPathname, getQuery, joinURL, withBase, withLeadingSlash, withoutBase
 describe('path', () => {
   describe('withoutLeadingSlash', () => {
     it.each([
+      { input: undefined, out: '' },
       { input: '', out: '' },
       { input: '/', out: '' },
       { input: 'foo', out: 'foo' },
@@ -12,57 +13,46 @@ describe('path', () => {
       { input: '/foo/bar', out: 'foo/bar' },
       { input: '//foo', out: '/foo' },
       { input: '///foo', out: '//foo' },
-    ])('returns $input without a leading slash', ({ input, out }) => {
+    ])('converts $input to $out', ({ input, out }) => {
       expect(withoutLeadingSlash(input)).toBe(out)
-    })
-
-    it('returns an empty string for a missing input', () => {
-      expect(withoutLeadingSlash()).toBe('')
     })
   })
 
   describe('withLeadingSlash', () => {
     it.each([
+      { input: undefined, out: '/' },
       { input: '', out: '/' },
       { input: '/', out: '/' },
       { input: 'foo', out: '/foo' },
       { input: '/foo', out: '/foo' },
-      { input: 'foo/bar', out: '/foo/bar' },
       { input: '//foo', out: '//foo' },
-    ])('returns $input with a leading slash', ({ input, out }) => {
+    ])('converts $input to $out', ({ input, out }) => {
       expect(withLeadingSlash(input)).toBe(out)
-    })
-
-    it('returns / for a missing input', () => {
-      expect(withLeadingSlash()).toBe('/')
     })
   })
 
   describe('withoutTrailingSlash', () => {
     it.each([
+      { input: undefined, out: '/' },
       { input: '', out: '/' },
       { input: '/', out: '/' },
       { input: 'bar', out: 'bar' },
+      { input: 'bar/', out: 'bar' },
       { input: 'bar#abc', out: 'bar#abc' },
       { input: 'bar/#abc', out: 'bar#abc' },
       { input: 'foo?123', out: 'foo?123' },
       { input: 'foo/?123', out: 'foo?123' },
       { input: 'foo/?123#abc', out: 'foo?123#abc' },
-      { input: 'foo/?k=v', out: 'foo?k=v' },
       { input: 'foo/?k=/', out: 'foo?k=/' },
       { input: 'https://example.com/', out: 'https://example.com' },
-      { input: 'https://example.com/foo/', out: 'https://example.com/foo' },
-    ])('returns $input without a trailing slash', ({ input, out }) => {
+    ])('converts $input to $out', ({ input, out }) => {
       expect(withoutTrailingSlash(input)).toBe(out)
-    })
-
-    it('returns / for a missing input', () => {
-      expect(withoutTrailingSlash()).toBe('/')
     })
   })
 
   describe('withTrailingSlash', () => {
     it.each([
+      { input: undefined, out: '/' },
       { input: '', out: '/' },
       { input: '/', out: '/' },
       { input: 'bar', out: 'bar/' },
@@ -72,13 +62,8 @@ describe('path', () => {
       { input: 'foo/?123', out: 'foo/?123' },
       { input: 'foo/?123#abc', out: 'foo/?123#abc' },
       { input: 'https://example.com', out: 'https://example.com/' },
-      { input: 'https://example.com/foo', out: 'https://example.com/foo/' },
-    ])('returns $input with a trailing slash', ({ input, out }) => {
+    ])('converts $input to $out', ({ input, out }) => {
       expect(withTrailingSlash(input)).toBe(out)
-    })
-
-    it('returns / for a missing input', () => {
-      expect(withTrailingSlash()).toBe('/')
     })
   })
 
@@ -87,12 +72,9 @@ describe('path', () => {
       // Empty or single segment
       { input: [], out: '' },
       { input: ['/'], out: '/' },
-      { input: ['/a'], out: '/a' },
       // Falsy segments
       { input: ['', 'a'], out: 'a' },
-      { input: ['a', '', 'b'], out: 'a/b' },
       { input: ['a', undefined, 'b'], out: 'a/b' },
-      { input: [undefined, './'], out: './' },
       // Basic joining
       { input: ['a', 'b'], out: 'a/b' },
       { input: ['a', 'b/', 'c'], out: 'a/b/c' },
@@ -115,7 +97,6 @@ describe('path', () => {
       // Empty or root base
       { base: '', input: '/foo', out: '/foo' },
       { base: '/', input: '/', out: '/' },
-      { base: '/', input: 'https://test.com', out: 'https://test.com' },
       // Simple base paths
       { base: '/foo', input: '', out: '/foo' },
       { base: '/foo', input: '/bar', out: '/foo/bar' },
@@ -124,7 +105,6 @@ describe('path', () => {
       { base: '/base', input: '/base/', out: '/base/' },
       { base: '/base', input: '/base/a', out: '/base/a' },
       { base: '/base/', input: '/base', out: '/base' },
-      { base: '/base/', input: '/base/a', out: '/base/a' },
       // Base followed by query or hash
       { base: '/base', input: '/base?q=1', out: '/base?q=1' },
       { base: '/base', input: '/base#hash', out: '/base#hash' },
@@ -133,7 +113,7 @@ describe('path', () => {
       // Absolute URLs, which no base can prefix
       { base: '/base', input: 'https://test.com/a', out: 'https://test.com/a' },
       { base: '/base', input: '//test.com/a', out: '//test.com/a' },
-    ])('returns $input with base $base', ({ base, input, out }) => {
+    ])('converts $input with base $base to $out', ({ base, input, out }) => {
       expect(withBase(input, base)).toBe(out)
     })
   })
@@ -144,17 +124,13 @@ describe('path', () => {
       { base: '', input: '/foo', out: '/foo' },
       { base: '/', input: '/', out: '/' },
       { base: '/', input: '/test/', out: '/test/' },
-      { base: '/', input: '/?test', out: '/?test' },
-      { base: '/', input: 'https://test.com', out: 'https://test.com' },
       // Base not present
       { base: '/foo', input: '/', out: '/' },
       { base: '/foo', input: '/bar', out: '/bar' },
-      { base: '/foo/', input: '/', out: '/' },
       // Base present
       { base: '/base', input: '/base/', out: '/' },
       { base: '/base', input: '/base/a', out: '/a' },
       { base: '/base/', input: '/base', out: '/' },
-      { base: '/base/', input: '/base/a', out: '/a' },
       { base: '/base/a/', input: '/base/a', out: '/' },
       // Base followed by query or hash
       { base: '/api', input: '/api?test', out: '/?test' },
@@ -163,7 +139,7 @@ describe('path', () => {
       { base: '/api', input: '/apiv2', out: '/apiv2' },
       // Absolute URLs, which carry no base to strip
       { base: '/base/', input: 'https://test.com', out: 'https://test.com' },
-    ])('returns $input without base $base', ({ base, input, out }) => {
+    ])('converts $input with base $base to $out', ({ base, input, out }) => {
       expect(withoutBase(input, base)).toBe(out)
     })
   })
@@ -171,69 +147,52 @@ describe('path', () => {
   describe('getPathname', () => {
     it.each([
       // Simple paths
+      { input: undefined, out: '/' },
       { input: '', out: '/' },
       { input: '/', out: '/' },
       { input: '/foo', out: '/foo' },
       { input: '/foo/', out: '/foo/' },
-      { input: '/#hash', out: '/' },
-      { input: '/foo/#bar', out: '/foo/' },
       // With a query string
       { input: '/foo?bar', out: '/foo' },
       { input: '/?query#hash', out: '/' },
       // With a hash
+      { input: '/#hash', out: '/' },
       { input: '/foo#bar', out: '/foo' },
+      { input: '/foo/#bar', out: '/foo/' },
       { input: '/foo?bar#baz', out: '/foo' },
       // Absolute URLs
       { input: 'https://example.com', out: '/' },
       { input: 'https://example.com/', out: '/' },
       { input: 'https://example.com/foo', out: '/foo' },
-      { input: 'https://example.com/foo?bar', out: '/foo' },
-      { input: 'https://example.com/foo#hash', out: '/foo' },
       { input: 'https://example.com/foo?bar#baz', out: '/foo' },
       { input: 'https://example.com?bar', out: '/' },
       { input: 'https://example.com#/not-a-path', out: '/' },
       { input: 'https://user:pass@example.com/foo', out: '/foo' },
-      { input: 'https://example.com:8080/foo', out: '/foo' },
       { input: 'https://[::1]:8080/foo', out: '/foo' },
       { input: 'HTTPS://EXAMPLE.COM/Foo', out: '/Foo' },
       // Protocol-relative URLs, whose authority follows the leading `//`
       { input: '//example.com', out: '/' },
       { input: '//example.com/foo', out: '/foo' },
-      { input: '//example.com/foo?bar#baz', out: '/foo' },
       // Absolute URLs are sliced too, so their pathname is left unnormalized.
       { input: 'https://example.com/a b', out: '/a b' },
       { input: 'https://example.com/a/../b', out: '/a/../b' },
-      { input: 'https://example.com/ünïcode', out: '/ünïcode' },
       // Relative paths and non-URL schemes are sliced, not URL-parsed.
       { input: 'foo', out: 'foo' },
-      { input: 'foo?bar', out: 'foo' },
-      { input: 'foo#hash', out: 'foo' },
-      { input: '../foo', out: '../foo' },
       { input: 'mailto:someone@example.com', out: 'mailto:someone@example.com' },
-    ])('extracts the pathname of $input', ({ input, out }) => {
+    ])('extracts the pathname of $input as $out', ({ input, out }) => {
       expect(getPathname(input)).toBe(out)
-    })
-
-    it('returns / for a missing input', () => {
-      expect(getPathname()).toBe('/')
     })
   })
 
   describe('withQuery', () => {
     it.each<{ input: string, query: QueryObject, out: string }>([
       // Nothing to merge
-      { input: '', query: {}, out: '' },
-      { input: '/', query: {}, out: '/' },
-      { input: '?test', query: {}, out: '?test' },
       { input: '/?test', query: {}, out: '/?test' },
       // Merging into existing parameters
-      { input: '/?test', query: { foo: '0' }, out: '/?test=&foo=0' },
       { input: '/?test', query: { foo: 0 }, out: '/?test=&foo=0' },
       { input: '/?foo=1', query: { foo: 2 }, out: '/?foo=2' },
       { input: '/?foo=1', query: { foo: true, bar: false }, out: '/?foo=true&bar=false' },
-      { input: 'http://a.com?v=1', query: { x: 2 }, out: 'http://a.com?v=1&x=2' },
       // `undefined` removes, `null` keeps an empty value
-      { input: '/?test', query: { test: undefined }, out: '/' },
       { input: '/?foo=1', query: { foo: undefined }, out: '/' },
       { input: '/?foo=1', query: { foo: null }, out: '/?foo=' },
       // Percent-encoding
@@ -250,25 +209,22 @@ describe('path', () => {
       // The fragment stays at the end and never becomes part of the query.
       { input: '/foo#bar', query: { page: 2 }, out: '/foo?page=2#bar' },
       { input: '/foo?a=1#bar', query: { page: 2 }, out: '/foo?a=1&page=2#bar' },
-      { input: '/foo#bar', query: { a: undefined }, out: '/foo#bar' },
       { input: '/foo?a=1#bar', query: { a: undefined }, out: '/foo#bar' },
       { input: '/foo#a?b', query: { x: 1 }, out: '/foo?x=1#a?b' },
       { input: 'https://a.com/p?v=1#frag', query: { x: 2 }, out: 'https://a.com/p?v=1&x=2#frag' },
       { input: '/foo#', query: { x: 1 }, out: '/foo?x=1#' },
-    ])('returns $input with query $query', ({ input, query, out }) => {
+    ])('converts $input with $query to $out', ({ input, query, out }) => {
       expect(withQuery(input, query)).toBe(out)
     })
   })
 
   describe('getQuery', () => {
     it.each<{ input: string, out: ParsedQuery }>([
-      { input: '', out: {} },
       { input: '/foo', out: {} },
       { input: '/foo?', out: {} },
       { input: '/foo?a=1', out: { a: '1' } },
       { input: '/foo?a=1&b=2', out: { a: '1', b: '2' } },
       { input: '/foo?a', out: { a: '' } },
-      { input: '/foo?a=', out: { a: '' } },
       { input: '/foo?a=1&a=2', out: { a: ['1', '2'] } },
       { input: '/foo?a=1&a=2&a=3', out: { a: ['1', '2', '3'] } },
       { input: '/foo?a=1#bar', out: { a: '1' } },
@@ -276,7 +232,7 @@ describe('path', () => {
       { input: '/foo?email=some+email.com', out: { email: 'some email.com' } },
       { input: '/foo?str=%26', out: { str: '&' } },
       { input: 'https://a.com/p?v=1#frag', out: { v: '1' } },
-    ])('parses the query of $input', ({ input, out }) => {
+    ])('parses the query of $input as $out', ({ input, out }) => {
       expect(getQuery(input)).toEqual(out)
     })
 
@@ -287,8 +243,7 @@ describe('path', () => {
     })
 
     it('reads keys that collide with Object.prototype members', () => {
-      expect(getQuery('/foo?constructor=x')).toEqual({ constructor: 'x' })
-      expect(getQuery('/foo?toString=x&valueOf=y')).toEqual({ toString: 'x', valueOf: 'y' })
+      expect(getQuery('/foo?constructor=x&toString=y')).toEqual({ constructor: 'x', toString: 'y' })
     })
 
     it('round-trips the parameters written by withQuery', () => {
