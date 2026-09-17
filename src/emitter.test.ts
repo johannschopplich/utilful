@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createEmitter } from './emitter'
 
 const eventType = Symbol('eventType')
+const otherEventType = Symbol('eventType')
 // eslint-disable-next-line ts/consistent-type-definitions
 type Events = {
   foo: unknown
@@ -10,6 +11,7 @@ type Events = {
   Foo: unknown
   FOO: unknown
   [eventType]: unknown
+  [otherEventType]: unknown
 }
 
 describe('createEmitter', () => {
@@ -20,7 +22,7 @@ describe('createEmitter', () => {
     emitter = createEmitter(events)
   })
 
-  it('invokes handlers from a passed-in map', () => {
+  it('invokes handlers already in the events argument', () => {
     const first = vi.fn()
     const second = vi.fn()
     events.set('foo', [first, second])
@@ -31,19 +33,22 @@ describe('createEmitter', () => {
     expect(second).toHaveBeenCalledOnce()
   })
 
-  it('exposes the passed-in map as events', () => {
+  it('exposes the events argument as events', () => {
     expect(emitter.events).toBe(events)
   })
 
   describe('on', () => {
-    it('registers a handler under a symbol type', () => {
+    it('keeps the handlers of two symbols with the same description apart', () => {
       const event = { a: 'b' }
       const handler = vi.fn()
+      const otherHandler = vi.fn()
 
       emitter.on(eventType, handler)
+      emitter.on(otherEventType, otherHandler)
       emitter.emit(eventType, event)
 
       expect(handler).toHaveBeenCalledExactlyOnceWith(event)
+      expect(otherHandler).not.toHaveBeenCalled()
     })
 
     it('appends a handler after the existing handlers of the type', () => {
@@ -81,20 +86,20 @@ describe('createEmitter', () => {
     })
 
     it('removes all handlers of the type without a handler argument', () => {
-      const onFoo1 = vi.fn()
-      const onFoo2 = vi.fn()
-      const onBar = vi.fn()
+      const firstFooHandler = vi.fn()
+      const secondFooHandler = vi.fn()
+      const barHandler = vi.fn()
 
-      emitter.on('foo', onFoo1)
-      emitter.on('foo', onFoo2)
-      emitter.on('bar', onBar)
+      emitter.on('foo', firstFooHandler)
+      emitter.on('foo', secondFooHandler)
+      emitter.on('bar', barHandler)
       emitter.off('foo')
       emitter.emit('foo', undefined)
       emitter.emit('bar', undefined)
 
-      expect(onFoo1).not.toHaveBeenCalled()
-      expect(onFoo2).not.toHaveBeenCalled()
-      expect(onBar).toHaveBeenCalledOnce()
+      expect(firstFooHandler).not.toHaveBeenCalled()
+      expect(secondFooHandler).not.toHaveBeenCalled()
+      expect(barHandler).toHaveBeenCalledOnce()
     })
 
     it('keeps a handler registered under a type that differs in case', () => {
@@ -120,25 +125,28 @@ describe('createEmitter', () => {
     })
 
     it('invokes only the handler whose type matches case', () => {
-      const onFoo = vi.fn()
-      const onFOO = vi.fn()
+      const titleCaseHandler = vi.fn()
+      const upperCaseHandler = vi.fn()
 
-      emitter.on('Foo', onFoo)
-      emitter.on('FOO', onFOO)
+      emitter.on('Foo', titleCaseHandler)
+      emitter.on('FOO', upperCaseHandler)
       emitter.emit('Foo', 'Foo arg')
 
-      expect(onFoo).toHaveBeenCalledExactlyOnceWith('Foo arg')
-      expect(onFOO).not.toHaveBeenCalled()
+      expect(titleCaseHandler).toHaveBeenCalledExactlyOnceWith('Foo arg')
+      expect(upperCaseHandler).not.toHaveBeenCalled()
     })
 
-    it('invokes * handlers with the type and event', () => {
-      const event = { a: 'b' }
-      const star = vi.fn()
+    it('invokes * handlers with the type and event of each emit', () => {
+      const fooEvent = { a: 'b' }
+      const barEvent = { c: 'd' }
+      const wildcardHandler = vi.fn()
 
-      emitter.on('*', star)
-      emitter.emit('foo', event)
+      emitter.on('*', wildcardHandler)
+      emitter.emit('foo', fooEvent)
+      emitter.emit('bar', barEvent)
 
-      expect(star).toHaveBeenCalledExactlyOnceWith('foo', event)
+      expect(wildcardHandler).toHaveBeenNthCalledWith(1, 'foo', fooEvent)
+      expect(wildcardHandler).toHaveBeenNthCalledWith(2, 'bar', barEvent)
     })
   })
 })
