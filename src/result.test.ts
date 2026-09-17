@@ -107,7 +107,7 @@ describe('andThen', () => {
     expect(result.error).toBe('got 2')
   })
 
-  it('returns an Err without calling the callback', () => {
+  it('passes an Err through without calling the callback', () => {
     let called = false
     const result = err<number, string>('fail').andThen((_x) => {
       called = true
@@ -151,7 +151,7 @@ describe('unwrapErr', () => {
     expect(() => ok('my value').unwrapErr()).toThrow(/my value/)
   })
 
-  it('returns the error type E', () => {
+  it('infers SyntaxError as the return type', () => {
     const error = err<number, SyntaxError>(new SyntaxError('bad')).unwrapErr()
     expectTypeOf(error).toEqualTypeOf<SyntaxError>()
   })
@@ -177,10 +177,11 @@ describe('unwrapOr', () => {
 describe('match', () => {
   it('returns the ok handler result for an Ok', () => {
     const result = ok(2).match({
-      ok: x => `value: ${x}`,
-      err: e => `error: ${e}`,
+      ok: x => x * 2,
+      err: () => 0,
     })
-    expect(result).toBe('value: 2')
+    expect(result).toBe(4)
+    expectTypeOf(result).toEqualTypeOf<number>()
   })
 
   it('returns the err handler result for an Err', () => {
@@ -221,14 +222,14 @@ describe('toResult', () => {
     expect(result.error).toBe(error)
   })
 
-  it('throws a TypeError when the function returns a promise', () => {
+  it('throws a TypeError for a function that returns a promise', () => {
     expect(() => toResult(() => Promise.resolve(1))).toThrow(TypeError)
     expect(() => toResult(() => Promise.resolve(1))).toThrow(/Pass the promise itself/)
   })
 })
 
 describe('chaining', () => {
-  it('applies each map in a chain from toResult to an Ok value', () => {
+  it('applies each map to the Ok from toResult', () => {
     const doubledId = toResult(() => JSON.parse('{"id": 42}'))
       .map((data: { id: number }) => data.id)
       .map(id => id * 2)
@@ -237,7 +238,7 @@ describe('chaining', () => {
     expect(doubledId).toBe(84)
   })
 
-  it('skips each map in a chain from toResult on an Err', () => {
+  it('skips each map on the Err from toResult', () => {
     const doubledId = toResult(() => JSON.parse('{invalid}'))
       .map((data: { id: number }) => data.id)
       .map(id => id * 2)
@@ -288,19 +289,19 @@ describe('tryCatch', () => {
     expect(result).toEqual({ value: undefined, error })
   })
 
-  it('throws a TypeError when the function returns a promise', () => {
+  it('throws a TypeError for a function that returns a promise', () => {
     expect(() => tryCatch(() => Promise.resolve(1))).toThrow(TypeError)
   })
 })
 
 function assertOk<T, E>(result: Result<T, E>): asserts result is Ok<T, E> {
-  if (!isOk(result)) {
-    throw new TypeError('Expected Ok result')
+  if (!(result instanceof Ok)) {
+    throw new TypeError('Expected an Ok instance')
   }
 }
 
 function assertErr<T, E>(result: Result<T, E>): asserts result is Err<T, E> {
-  if (!isErr(result)) {
-    throw new TypeError('Expected Err result')
+  if (!(result instanceof Err)) {
+    throw new TypeError('Expected an Err instance')
   }
 }
