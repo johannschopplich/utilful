@@ -81,6 +81,12 @@ describe('defu', () => {
     expect(defu({}, { foo: 1 }, false as any, 123 as any, { bar: 2 })).toEqual({ foo: 1, bar: 2 })
   })
 
+  it('leaves the defaults unmodified', () => {
+    const defaults = { a: 'default', nested: { b: 'default' }, list: ['default'] }
+    defu({ a: 'source', nested: { b: 'source', c: 'source' }, list: ['source'] }, defaults)
+    expect(defaults).toEqual({ a: 'default', nested: { b: 'default' }, list: ['default'] })
+  })
+
   it('lets earlier arguments win across multiple defaults', () => {
     const result = defu({ a: 1 }, { b: 2, a: 'x' }, { c: 3, a: 'x', b: 'x' })
     expect(result).toEqual({
