@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { defineCommand } from './command'
 import { createCliHarness } from './testing'
 
@@ -21,49 +21,55 @@ const mainCommand = defineCommand({
 const { runCli } = createCliHarness(mainCommand)
 
 describe('usage', () => {
-  it('lists the commands of a tree', async () => {
-    const { stdout } = await runCli(['--help'])
+  let treeUsage: string
+  let buildUsage: string
 
-    expect(stdout.split('\n').slice(0, 2)).toEqual(['probe v1.2.3', 'A command tree'])
-    expect(stdout).toContain('USAGE')
-    expect(stdout).toContain('probe build')
-    expect(stdout).toContain('Build the entry file')
-    expect(stdout).toContain('probe <command> --help')
+  beforeAll(async () => {
+    treeUsage = (await runCli(['--help'])).stdout
+    buildUsage = (await runCli(['build', '--help'])).stdout
   })
 
-  it('prefixes a sub-command with the name of its parent', async () => {
-    const { stdout } = await runCli(['build', '--help'])
-
-    expect(stdout).toContain('probe build [OPTIONS] <FILE> --token=<secret>')
-    expect(stdout.split('\n')[0]).toBe('probe build v1.2.3')
+  it('opens with the name and version, then the description', () => {
+    expect(treeUsage.split('\n').slice(0, 2)).toEqual(['probe v1.2.3', 'A command tree'])
   })
 
-  it('renders every spelling and hint of an option', async () => {
-    const { stdout } = await runCli(['build', '--help'])
-
-    expect(stdout).toContain('-d, --out-dir=<out-dir>')
-    expect(stdout).toContain('(Default: dist)')
-    expect(stdout).toContain('--no-watch')
-    expect(stdout).toContain('(Required)')
+  it('lists subCommands with their descriptions', () => {
+    expect(treeUsage).toMatch(/^\s+build\s+Build the entry file$/m)
   })
 
-  it('names the value of an option after its hint', async () => {
-    const { stdout } = await runCli(['build', '--help'])
-
-    expect(stdout).toContain('--token=<secret>')
-    expect(stdout).not.toContain('<token>')
+  it('points to probe <command> --help at the end', () => {
+    expect(treeUsage.trimEnd().split('\n').at(-1)).toContain('probe <command> --help')
   })
 
-  it('omits the default of a boolean that is off by default', async () => {
-    const { stdout } = await runCli(['build', '--help'])
-
-    expect(stdout).not.toContain('(Default: false)')
+  it('prefixes a sub-command with the name of its parent', () => {
+    expect(buildUsage).toContain('USAGE  probe build [OPTIONS] <FILE> --token=<secret>')
   })
 
-  it('starts every description in the same column', async () => {
-    const { stdout } = await runCli(['build', '--help'])
+  it('inherits the version of the parent', () => {
+    expect(buildUsage.split('\n')[0]).toBe('probe build v1.2.3')
+  })
+
+  it.each([
+    '-d, --out-dir=<out-dir>',
+    '(Default: dist)',
+    '--no-watch',
+    '(Required)',
+  ])('lists %s', (text) => {
+    expect(buildUsage).toContain(text)
+  })
+
+  it('names the value of --token after its valueHint', () => {
+    expect(buildUsage).toMatch(/^\s+--token=<secret>\s+API token/m)
+    expect(buildUsage).not.toContain('<token>')
+  })
+
+  it('omits (Default: false) from a boolean', () => {
+    expect(buildUsage).not.toContain('(Default: false)')
+  })
+
+  it('starts every description in the same column', () => {
     const columns = ['Output directory', 'Rebuild on change', 'API token']
-      .map(description => stdout.split('\n').find(line => line.includes(description))!.indexOf(description))
+      .map(description => buildUsage.split('\n').find(line => line.includes(description))!.indexOf(description))
 
     expect(new Set(columns).size).toBe(1)
   })

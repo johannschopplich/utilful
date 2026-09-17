@@ -28,10 +28,13 @@ describe('parseArgs', () => {
     expectTypeOf(args.name).toEqualTypeOf<string>()
     expectTypeOf(args['out-dir']).toEqualTypeOf<string | undefined>()
     expectTypeOf(args.watch).toEqualTypeOf<boolean>()
+  })
+
+  it('types every key of a plain ArgsDef as string | boolean | undefined', () => {
     expectTypeOf(parseArgs([], {} as ArgsDef).anything).toEqualTypeOf<string | boolean | undefined>()
   })
 
-  it('reads an absent boolean as false', () => {
+  it('reads an absent --watch as false', () => {
     expect(parseArgs(['src/index.js'], buildArgs).watch).toBe(false)
   })
 
@@ -41,33 +44,33 @@ describe('parseArgs', () => {
     expect(args.watch).toBe(false)
   })
 
-  it('reads -d=out as a directory named out', () => {
+  it('reads -d=out as --out-dir out', () => {
     expect(parseArgs(['src/index.js', '-d=out'], buildArgs)['out-dir']).toBe('out')
   })
 
-  it('reads a negative number as the value of the option before it', () => {
+  it('reads -3 and -1 as the values of --start and -e', () => {
     const args = parseArgs(['x', '--start', '-3', '-e', '-1'], { ...buildArgs, start: { type: 'string' }, end: { type: 'string', alias: 'e' } })
 
     expect(args).toMatchObject({ start: '-3', end: '-1' })
   })
 
-  it('keeps an operand that starts with a dash past --', () => {
+  it('keeps -d=out past -- as an operand', () => {
     expect(parseArgs(['--', '-d=out'], buildArgs).file).toBe('-d=out')
   })
 
-  it('rejects an option no definition declares', () => {
+  it('rejects an undeclared --wtach', () => {
     expect(() => parseArgs(['src/index.js', '--wtach'], buildArgs)).toThrow('Unknown option \'--wtach\'')
   })
 
-  it('rejects a missing required positional by its name', () => {
+  it('rejects a missing required file by the name FILE', () => {
     expect(() => parseArgs([], buildArgs)).toThrow('Missing required positional argument: FILE')
   })
 
-  it('rejects a missing required option', () => {
+  it('rejects a missing required --token', () => {
     expect(() => parseArgs([], { token: { type: 'string', required: true } })).toThrow('Missing required argument: --token')
   })
 
-  it('rejects a positional no definition binds', () => {
+  it('rejects b.js as an extra positional', () => {
     expect(() => parseArgs(['a.js', 'b.js'], buildArgs)).toThrow('Unexpected argument: "b.js"')
   })
 

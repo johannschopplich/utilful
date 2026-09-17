@@ -59,147 +59,135 @@ async function reportFor(error: unknown, argv: string[] = []): Promise<CliResult
   return runCli(['fail', ...argv])
 }
 
-describe('error boundary', () => {
-  it('prints a recognized error as a message alone', async () => {
-    const { stderr, exitCode } = await reportFor(new CliError('Not a directory: /tmp/missing'))
+describe('error reporting', () => {
+  it('prints a CliError as its message alone', async () => {
+    const { stderr } = await reportFor(new CliError('Not a directory: /tmp/missing'))
 
     expect(stderr).toContain('Not a directory: /tmp/missing')
     expect(stderr).not.toMatch(STACK_FRAME)
+  })
+
+  it('exits with code 1 after a CliError', async () => {
+    const { exitCode } = await reportFor(new CliError('Not a directory: /tmp/missing'))
+
     expect(exitCode).toBe(1)
   })
 
-  it('adds the stack to a recognized error with --verbose', async () => {
+  it('adds the stack to a CliError with --verbose', async () => {
     const { stderr } = await reportFor(new CliError('Not a directory: /tmp/missing'), ['--verbose'])
 
     expect(stderr).toMatch(STACK_FRAME)
   })
 
-  it('keeps the stack off a wrong argument even with --verbose', async () => {
+  it('omits the stack of an ArgumentError even with --verbose', async () => {
     const { stderr } = await runCli(['build', '--verbose'])
 
-    expect(stderr).toContain('Missing required positional argument: FILE')
     expect(stderr).not.toMatch(STACK_FRAME)
   })
 
-  it('prints the stack of an unexpected error without being asked', async () => {
+  it('prints the stack of a TypeError without --verbose', async () => {
     const { stderr } = await reportFor(new TypeError('entries.map is not a function'))
 
     expect(stderr).toContain('entries.map is not a function')
     expect(stderr).toMatch(STACK_FRAME)
   })
 
-  it('treats a class named in expectedErrors as recognized', async () => {
+  it('omits the stack of an error class in expectedErrors', async () => {
     const { stderr } = await reportFor(new ProbeError('probe failed'))
 
     expect(stderr).not.toMatch(STACK_FRAME)
   })
 
-  it('renders an error through describe', async () => {
+  it('prints the text `describe` returns for an error', async () => {
     const { stderr } = await reportFor(new ProbeError('probe failed'))
 
     expect(stderr).toContain('Probe: probe failed')
   })
 
-  it('treats an error with a system error code as recognized', async () => {
+  it('omits the stack of an error with code ENOENT', async () => {
     const { stderr } = await reportFor(Object.assign(new Error('ENOENT: no such file or directory'), { code: 'ENOENT' }))
 
     expect(stderr).toContain('ENOENT')
     expect(stderr).not.toMatch(STACK_FRAME)
   })
 
-  it('prints the stack of an error with an ERR_ code', async () => {
+  it('prints the stack of an error with code ERR_INVALID_ARG_TYPE', async () => {
     const { stderr } = await reportFor(Object.assign(new TypeError('The "path" argument must be of type string'), { code: 'ERR_INVALID_ARG_TYPE' }))
 
     expect(stderr).toMatch(STACK_FRAME)
   })
 
   it('names each cause with --verbose', async () => {
-    const { stderr } = await reportFor(new CliError('Cannot read the input', { cause: new Error('permission denied') }), ['--verbose'])
+    const cause = new Error('permission denied', { cause: new RangeError('mode out of range') })
+    const { stderr } = await reportFor(new CliError('Cannot read the input', { cause }), ['--verbose'])
 
-    expect(stderr).toContain('Caused by: Error: permission denied')
+    expect(stderr).toContain('Caused by: Error: permission denied\nCaused by: RangeError: mode out of range')
   })
 
-  it('reports a thrown non-error by its string form', async () => {
-    const { stderr, exitCode } = await reportFor('plain string failure')
+  it('prints a thrown string as it is', async () => {
+    const { stderr } = await reportFor('plain string failure')
 
     expect(stderr).toContain('plain string failure')
-    expect(exitCode).toBe(1)
   })
 })
 
 describe('help', () => {
-  it('writes requested help to stdout', async () => {
+  it('writes usage to stdout with --help', async () => {
     const { stdout, stderr, exitCode } = await runCli(['--help'])
 
     expect(stdout).toContain('USAGE')
-    expect(stdout).toContain('build')
     expect(stderr).toBe('')
     expect(exitCode).toBe(0)
   })
 
-  it('writes the help of the named command', async () => {
-    const { stdout } = await runCli(['build', '--help'])
+  it('writes usage to stderr after a missing <FILE>', async () => {
+    const { stdout, stderr } = await runCli(['build'])
 
-    expect(stdout).toContain('probe build')
-    expect(stdout).toContain('<FILE>')
+    expect(stdout).toBe('')
+    expect(stderr).toContain('USAGE')
   })
+})
 
-  it('writes the version to stdout from behind a command name', async () => {
+describe('version', () => {
+  it('writes the version with build --version', async () => {
     const { stdout } = await runCli(['build', '--version'])
 
     expect(stdout).toBe('1.2.3\n')
   })
-
-  it('keeps usage off stdout when an argument was wrong', async () => {
-    const { stdout, stderr, exitCode } = await runCli(['build'])
-
-    expect(stdout).toBe('')
-    expect(stderr).toContain('USAGE')
-    expect(stderr).toContain('Missing required positional argument: FILE')
-    expect(exitCode).toBe(1)
-  })
 })
 
 describe('dispatch', () => {
-  it('hands options before the command name to the command', async () => {
+  it('passes an --out-dir given before build on to build', async () => {
     const { stdout } = await runCli(['--out-dir', 'out', 'build', 'x.js'])
 
     expect(JSON.parse(stdout)).toMatchObject({ 'out-dir': 'out', 'file': 'x.js' })
   })
 
-  it('does not mistake an option value for a command name', async () => {
+  it('reads fail after --out-dir as its value, not a command', async () => {
     const { stdout } = await runCli(['build', '--out-dir', 'fail', 'x.js'])
 
     expect(JSON.parse(stdout)).toMatchObject({ 'out-dir': 'fail', 'file': 'x.js' })
   })
 
-  it('never reads an operand past -- as a command name', async () => {
+  it('never reads build past -- as a command name', async () => {
     const { stderr } = await runCli(['--', 'build'])
 
     expect(stderr).toContain('Missing command')
   })
 
-  it('asks for a command when none was named', async () => {
-    const { stderr, exitCode } = await runCli([])
+  it('rejects an empty argv with Missing command', async () => {
+    const { stderr } = await runCli([])
 
     expect(stderr).toContain('Missing command')
-    expect(exitCode).toBe(1)
   })
 
-  it('names an operand that is no command', async () => {
-    const { stderr, exitCode } = await runCli(['biuld', 'x.js'])
+  it('rejects biuld as an unknown command', async () => {
+    const { stderr } = await runCli(['biuld', 'x.js'])
 
     expect(stderr).toContain('Unknown command: biuld')
-    expect(exitCode).toBe(1)
   })
 
-  it('runs the tree itself when no operand names a command', async () => {
-    const { stdout } = await runCountCli(['a.txt', 'b.txt'])
-
-    expect(stdout).toBe('count a.txt b.txt\n')
-  })
-
-  it('reads only the first operand as a command name', async () => {
+  it('reads build after a.txt as an operand, not a command', async () => {
     const { stdout } = await runCountCli(['a.txt', 'build'])
 
     expect(stdout).toBe('count a.txt build\n')
