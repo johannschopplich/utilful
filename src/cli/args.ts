@@ -51,7 +51,7 @@ export interface CommonArgs extends ArgsDef {
 export const commonArgs: CommonArgs = {
   verbose: {
     type: 'boolean',
-    description: 'Print the cause chain and stack trace on failure',
+    description: 'Print the stack trace on failure',
   },
 }
 

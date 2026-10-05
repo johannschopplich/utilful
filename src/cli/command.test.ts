@@ -124,11 +124,28 @@ describe('error reporting', () => {
     expect(stderr).toMatch(STACK_FRAME)
   })
 
-  it('names each cause with --verbose', async () => {
+  it('names each cause of a CliError without its stack', async () => {
     const cause = new Error('permission denied', { cause: new RangeError('mode out of range') })
-    const { stderr } = await reportFor(new CliError('Cannot read the input', { cause }), ['--verbose'])
+    const { stderr } = await reportFor(new CliError('Cannot read the input', { cause }))
 
-    expect(stderr).toContain('Caused by: Error: permission denied\nCaused by: RangeError: mode out of range')
+    expect(stderr).toContain('Cannot read the input\n\nCaused by: Error: permission denied\nCaused by: RangeError: mode out of range')
+    expect(stderr).not.toMatch(STACK_FRAME)
+  })
+
+  it('leaves out a cause that repeats the message above it', async () => {
+    const cause = new TypeError('Invalid delimiter "x"', { cause: new Error('not one of , | \\t') })
+    const { stderr } = await reportFor(new CliError(cause.message, { cause }))
+
+    expect(stderr.match(/Invalid delimiter/g)).toHaveLength(1)
+    expect(stderr).toContain('Caused by: Error: not one of')
+  })
+
+  it('names each cause of a cyclic chain once', async () => {
+    const error = new CliError('Cannot read the input')
+    error.cause = new Error('permission denied', { cause: error })
+    const { stderr } = await reportFor(error)
+
+    expect(stderr.match(/Caused by/g)).toHaveLength(1)
   })
 
   it('prints a thrown string as it is', async () => {
