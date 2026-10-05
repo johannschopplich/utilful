@@ -58,13 +58,20 @@ function isExpected(error: unknown, expectedErrors: readonly ErrorClass[]): bool
 function formatCauseChain(error: unknown, message: string): string {
   const causeLines: string[] = []
   const seen = new Set<unknown>([error])
+  let printedText = message
   let current: unknown = error instanceof Error ? error.cause : undefined
 
   while (current instanceof Error && !seen.has(current)) {
     seen.add(current)
-    // A wrapper that copies the message of its cause would otherwise print it twice.
-    if (current.message !== message)
-      causeLines.push(`Caused by: ${current.name || 'Error'}: ${current.message}`)
+    const name = current.name || 'Error'
+    if (!current.message) {
+      causeLines.push(`Caused by: ${name}`)
+    }
+    // A wrapper that copies or quotes the message of its cause would otherwise print it twice.
+    else if (!printedText.includes(current.message)) {
+      causeLines.push(`Caused by: ${name}: ${current.message}`)
+      printedText += `\n${current.message}`
+    }
     current = current.cause
   }
 

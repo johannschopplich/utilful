@@ -129,12 +129,30 @@ describe('error reporting', () => {
     expect(stderr).not.toMatch(STACK_FRAME)
   })
 
-  it('leaves out a cause that repeats the message above it', async () => {
+  it.each([
+    ['repeats', (message: string) => message],
+    ['quotes', (message: string) => `Cannot parse the options: ${message}`],
+  ])('leaves out a cause whose message the printed message %s', async (_, wrap) => {
     const cause = new TypeError('Invalid delimiter "x"', { cause: new Error('not one of , | \\t') })
-    const { stderr } = await reportFor(new CliError(cause.message, { cause }))
+    const { stderr } = await reportFor(new CliError(wrap(cause.message), { cause }))
 
     expect(stderr.match(/Invalid delimiter/g)).toHaveLength(1)
     expect(stderr).toContain('Caused by: Error: not one of')
+  })
+
+  it('leaves out a cause whose message a printed cause quotes', async () => {
+    const cause = new Error('[POST] "https://api.example.com": <no response> fetch failed', {
+      cause: new TypeError('fetch failed', { cause: new Error('connect ECONNREFUSED') }),
+    })
+    const { stderr } = await reportFor(new CliError('Cannot create the cache', { cause }))
+
+    expect(stderr).toContain('Caused by: Error: [POST] "https://api.example.com": <no response> fetch failed\nCaused by: Error: connect ECONNREFUSED')
+  })
+
+  it('names a cause without a message by its name', async () => {
+    const { stderr } = await reportFor(new CliError('Cannot read the input', { cause: new DOMException('', 'AbortError') }))
+
+    expect(stderr).toMatch(/Caused by: AbortError$/m)
   })
 
   it('names each cause of a cyclic chain once', async () => {
