@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
+import { commonArgs } from './args'
 import { defineCommand } from './command'
 import { createCliHarness } from './testing'
 
@@ -96,6 +97,29 @@ describe('usage', () => {
 
   it('omits (Default: false) from --json', () => {
     expect(buildUsage).toMatch(/^ +--json +Print JSON$/m)
+  })
+
+  it('lists --verbose last for a command that runs', () => {
+    expect(buildUsage.trimEnd().split('\n').at(-1)).toMatch(/^ +--verbose +Print the stack trace on failure$/)
+  })
+
+  it('lists --verbose once for a command that spreads commonArgs', async () => {
+    const { runCli: runSpreadCli } = createCliHarness(defineCommand({ meta: { name: 'spread' }, args: commonArgs, run() {} }))
+    const { stdout } = await runSpreadCli(['--help'])
+
+    expect(stdout.match(/--verbose/g)).toHaveLength(1)
+  })
+
+  it('lists the --verbose a command declares in place of verboseArg', async () => {
+    const { runCli: runOwnCli } = createCliHarness(defineCommand({ args: { verbose: { type: 'boolean', description: 'Log every step' } }, run() {} }))
+    const { stdout } = await runOwnCli(['--help'])
+
+    expect(stdout).toMatch(/^ +--verbose +Log every step$/m)
+    expect(stdout.match(/--verbose/g)).toHaveLength(1)
+  })
+
+  it('lists no options for a tree that does not run on its own', () => {
+    expect(treeUsage).not.toContain('OPTIONS')
   })
 
   it('starts every description in the same column', () => {

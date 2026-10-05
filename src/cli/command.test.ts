@@ -1,6 +1,5 @@
 import type { CliResult } from './testing'
 import { describe, expect, it } from 'vitest'
-import { commonArgs } from './args'
 import { defineCommand } from './command'
 import { CliError } from './errors'
 import { createCliHarness } from './testing'
@@ -12,7 +11,6 @@ class ProbeError extends Error {}
 const buildCommand = defineCommand({
   meta: { name: 'build', description: 'Build the entry file' },
   args: {
-    ...commonArgs,
     'file': { type: 'positional', description: 'The entry file', required: true },
     'out-dir': { type: 'string', alias: 'd', description: 'Output directory' },
     'watch': { type: 'boolean', description: 'Rebuild on change', default: true },
@@ -26,7 +24,6 @@ let failure: unknown
 
 const failCommand = defineCommand({
   meta: { name: 'fail', description: 'Throw whatever the test asked for' },
-  args: commonArgs,
   run() {
     throw failure
   },
@@ -182,6 +179,15 @@ describe('help', () => {
 
     expect(stdout).toBe('')
     expect(stderr).toContain('USAGE')
+  })
+})
+
+describe('verbose', () => {
+  it('accepts --verbose on a command that does not declare it', async () => {
+    const { stdout, exitCode } = await runCountCli(['a.txt', '--verbose'])
+
+    expect(stdout).toBe('count a.txt\n')
+    expect(exitCode).toBe(0)
   })
 })
 

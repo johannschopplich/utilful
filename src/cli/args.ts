@@ -44,16 +44,18 @@ export type ParsedArgs<T extends ArgsDef = ArgsDef> = {
         : string | undefined
 }
 
+/** @deprecated See `commonArgs`. */
 export interface CommonArgs extends ArgsDef {
   verbose: BooleanArgDef
 }
 
-export const commonArgs: CommonArgs = {
-  verbose: {
-    type: 'boolean',
-    description: 'Print the stack trace on failure',
-  },
+export const verboseArg: BooleanArgDef = {
+  type: 'boolean',
+  description: 'Print the stack trace on failure',
 }
+
+/** @deprecated The runner accepts `--verbose` on every command, so spreading this adds nothing. */
+export const commonArgs: CommonArgs = { verbose: verboseArg }
 
 /** Parses `argv` against a definition. An absent boolean reads as `false`, and `--no-<name>` turns one off. */
 export function parseArgs<T extends ArgsDef>(

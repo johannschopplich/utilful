@@ -2,7 +2,7 @@ import type { ArgsDef, ParsedArgs } from './args'
 import type { ReportOptions } from './errors'
 import process from 'node:process'
 import { parseArgs as parseNodeArgs } from 'node:util'
-import { parseArgs, toNodeOptions } from './args'
+import { parseArgs, toNodeOptions, verboseArg } from './args'
 import { ArgumentError, reportFailure } from './errors'
 import { renderUsage } from './usage'
 
@@ -67,40 +67,52 @@ export async function runMain<T extends ArgsDef>(command: CommandDef<T>, options
 
 /** Runs like `runMain`, but without the error boundary. */
 export async function runCommand<T extends ArgsDef>(command: CommandDef<T>, argv: readonly string[]): Promise<void> {
-  const { name, firstOperand, rest } = findSubCommand(command, argv)
+  const { commands, firstOperand, rest } = resolveCommand(command, argv)
+  const leaf = withRunnerArgs(commands.at(-1)!)
 
-  if (name !== undefined)
-    return runCommand(command.subCommands![name]!, rest)
-
-  if (command.subCommands !== undefined && command.run === undefined)
+  if (isDispatchOnly(leaf))
     throw new ArgumentError(firstOperand === undefined ? 'Missing command' : `Unknown command: ${firstOperand}`)
 
-  const args = parseArgs(rest, (command.args ?? {}) as T, { allowExtraPositionals: command.allowExtraPositionals })
-  await command.run?.({ args })
+  const args = parseArgs(rest, leaf.args ?? {}, { allowExtraPositionals: leaf.allowExtraPositionals })
+  await leaf.run?.({ args })
 }
 
 function usageFor(command: CommandDef<any>, argv: readonly string[], stream: NodeJS.WriteStream): string {
-  const commands = [command]
-  const keys: string[] = []
-  let current = command
-  let rest: readonly string[] = argv
+  const { commands, keys } = resolveCommand(command, argv)
 
-  while (true) {
-    const found = findSubCommand(current, rest)
-    if (found.name === undefined)
-      break
-
-    current = current.subCommands![found.name]!
-    commands.push(current)
-    keys.push(found.name)
-    rest = found.rest
-  }
-
-  return renderUsage(current, {
+  return renderUsage(withRunnerArgs(commands.at(-1)!), {
     commandPath: [command.meta?.name, ...keys].filter(name => name !== undefined).join(' '),
     version: commands.findLast(walked => walked.meta?.version !== undefined)?.meta?.version,
     stream,
   })
+}
+
+function resolveCommand(command: CommandDef<any>, argv: readonly string[]): { commands: CommandDef<any>[], keys: string[], firstOperand?: string, rest: string[] } {
+  const commands = [command]
+  const keys: string[] = []
+  let rest = [...argv]
+
+  while (true) {
+    const found = findSubCommand(commands.at(-1)!, rest)
+    if (found.name === undefined)
+      return { commands, keys, firstOperand: found.firstOperand, rest }
+
+    commands.push(commands.at(-1)!.subCommands![found.name]!)
+    keys.push(found.name)
+    rest = found.rest
+  }
+}
+
+function isDispatchOnly(command: CommandDef<any>): boolean {
+  return command.subCommands !== undefined && command.run === undefined
+}
+
+/** `runMain` reads `--verbose` from argv itself, so strict parsing has to accept it on every command that parses arguments. */
+function withRunnerArgs(command: CommandDef<any>): CommandDef<any> {
+  if (isDispatchOnly(command))
+    return command
+
+  return { ...command, args: { ...command.args, verbose: command.args?.verbose ?? verboseArg } }
 }
 
 /**
