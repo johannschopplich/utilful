@@ -6,7 +6,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import process from 'node:process'
 import { Readable } from 'node:stream'
-import { afterEach, vi } from 'vitest'
+import { afterEach, onTestFinished, vi } from 'vitest'
 import { runMain } from './command'
 
 export interface FileMap {
@@ -143,14 +143,17 @@ export function useTemporaryDirectories(prefix = 'cli-test-'): (files?: FileMap)
   }
 }
 
+/** Pipes `input` into stdin until the test finishes; the function it returns restores stdin earlier. */
 export function mockStdin(input: string): () => void {
   // Real stdin hands over bytes, and a strict UTF-8 check depends on getting them.
   const stream = Readable.from([new TextEncoder().encode(input)])
   const originalStdin = process.stdin
-
-  Object.defineProperty(process, 'stdin', { value: stream, writable: true })
-
-  return () => {
+  const restoreStdin = (): void => {
     Object.defineProperty(process, 'stdin', { value: originalStdin, writable: true })
   }
+
+  onTestFinished(restoreStdin)
+  Object.defineProperty(process, 'stdin', { value: stream, writable: true })
+
+  return restoreStdin
 }
