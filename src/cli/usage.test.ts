@@ -13,9 +13,25 @@ const buildCommand = defineCommand({
   },
 })
 
+const checkCommand = defineCommand({
+  meta: { name: 'inspect', version: '2.0.0', description: 'Check a half of the catalog' },
+  subCommands: {
+    covers: defineCommand({
+      meta: { description: 'Check the covers' },
+      args: { sample: { type: 'string', description: 'Pairs to judge' } },
+    }),
+  },
+})
+
 const mainCommand = defineCommand({
   meta: { name: 'probe', version: '1.2.3', description: 'A command tree' },
-  subCommands: { build: buildCommand },
+  subCommands: {
+    build: buildCommand,
+    catalog: defineCommand({
+      meta: { description: 'Work on the catalog' },
+      subCommands: { check: checkCommand },
+    }),
+  },
 })
 
 const { runCli } = createCliHarness(mainCommand)
@@ -34,7 +50,7 @@ describe('usage', () => {
   })
 
   it('lists subCommands on the USAGE line', () => {
-    expect(treeUsage).toContain('USAGE  probe build\n')
+    expect(treeUsage).toContain('USAGE  probe build|catalog\n')
   })
 
   it('lists subCommands with their descriptions', () => {
@@ -87,5 +103,55 @@ describe('usage', () => {
       .map(description => buildUsage.split('\n').find(line => line.includes(description))!.indexOf(description))
 
     expect(new Set(columns).size).toBe(1)
+  })
+})
+
+describe('usage of a nested command', () => {
+  it.each([
+    [['catalog', '--help'], 'probe catalog check'],
+    [['catalog', 'check', '--help'], 'probe catalog check covers'],
+    [['catalog', 'check', 'covers', '--help'], 'probe catalog check covers \\[OPTIONS\\]'],
+  ])('names every command walked for %j', async (argv, usageLine) => {
+    const { stdout } = await runCli(argv)
+
+    expect(stdout).toMatch(new RegExp(`^USAGE {2}${usageLine}$`, 'm'))
+  })
+
+  it('prints the options of catalog check covers', async () => {
+    const { stdout } = await runCli(['catalog', 'check', 'covers', '--help'])
+
+    expect(stdout).toMatch(/^ +--sample=<sample> +Pairs to judge$/m)
+  })
+
+  it('opens with the path of keys, not with the meta.name inspect', async () => {
+    const { stdout } = await runCli(['catalog', 'check', '--help'])
+
+    expect(stdout.split('\n')[0]).toBe('probe catalog check v2.0.0')
+  })
+
+  it('takes the version of the nearest command that declares one', async () => {
+    const { stdout } = await runCli(['catalog', 'check', 'covers', '--help'])
+
+    expect(stdout.split('\n')[0]).toBe('probe catalog check covers v2.0.0')
+  })
+
+  it('opens with the version of the root for a command without its own', async () => {
+    const { stdout } = await runCli(['catalog', '--help'])
+
+    expect(stdout.split('\n')[0]).toBe('probe catalog v1.2.3')
+  })
+
+  it('prints the usage of catalog check covers after an unknown option', async () => {
+    const { stderr } = await runCli(['catalog', 'check', 'covers', '--bogus'])
+
+    expect(stderr).toContain('Unknown option \'--bogus\'')
+    expect(stderr).toMatch(/^USAGE {2}probe catalog check covers \[OPTIONS\]$/m)
+  })
+
+  it('prints the usage of the command that is missing its sub-command', async () => {
+    const { stderr } = await runCli(['catalog', 'check'])
+
+    expect(stderr).toContain('Missing command')
+    expect(stderr).toMatch(/^USAGE {2}probe catalog check covers$/m)
   })
 })

@@ -80,11 +80,27 @@ export async function runCommand<T extends ArgsDef>(command: CommandDef<T>, argv
 }
 
 function usageFor(command: CommandDef<any>, argv: readonly string[], stream: NodeJS.WriteStream): string {
-  const { name } = findSubCommand(command, argv)
+  const commands = [command]
+  const keys: string[] = []
+  let current = command
+  let rest: readonly string[] = argv
 
-  return name === undefined
-    ? renderUsage(command, { stream })
-    : renderUsage(command.subCommands![name]!, { parent: command, stream })
+  while (true) {
+    const found = findSubCommand(current, rest)
+    if (found.name === undefined)
+      break
+
+    current = current.subCommands![found.name]!
+    commands.push(current)
+    keys.push(found.name)
+    rest = found.rest
+  }
+
+  return renderUsage(current, {
+    commandPath: [command.meta?.name, ...keys].filter(name => name !== undefined).join(' '),
+    version: commands.findLast(walked => walked.meta?.version !== undefined)?.meta?.version,
+    stream,
+  })
 }
 
 /**

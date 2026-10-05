@@ -6,19 +6,17 @@ import { stripVTControlCharacters } from 'node:util'
 import { paint } from './style'
 
 export interface RenderUsageOptions {
-  parent?: CommandDef<any>
+  commandPath?: string
+  version?: string
   /** Decides whether the text gets color. */
   stream?: NodeJS.WriteStream
 }
 
-export function renderUsage<T extends ArgsDef>(command: CommandDef<T>, { parent, stream = process.stdout }: RenderUsageOptions = {}): string {
+export function renderUsage<T extends ArgsDef>(command: CommandDef<T>, { commandPath: commandName = command.meta?.name ?? '', version = command.meta?.version, stream = process.stdout }: RenderUsageOptions = {}): string {
   const color = (style: Style, text: string): string => paint(style, text, stream)
   const heading = (title: string): string => color('bold', title)
 
   const meta = command.meta ?? {}
-  const parentMeta = parent?.meta ?? {}
-  const commandName = [parentMeta.name, meta.name].filter(name => name !== undefined).join(' ')
-  const version = meta.version ?? parentMeta.version
 
   const positionalLines: string[][] = []
   const optionLines: string[][] = []
