@@ -20,13 +20,18 @@ export interface BooleanArgDef {
   default?: boolean
 }
 
+export interface EnumArgDef extends Omit<StringArgDef, 'type'> {
+  type: 'enum'
+  options: readonly string[]
+}
+
 export interface PositionalArgDef {
   type: 'positional'
   description?: string
   required?: boolean
 }
 
-export type ArgDef = StringArgDef | BooleanArgDef | PositionalArgDef
+export type ArgDef = StringArgDef | BooleanArgDef | EnumArgDef | PositionalArgDef
 
 export type ArgsDef = Record<string, ArgDef>
 
@@ -39,10 +44,10 @@ export type ParsedArgs<T extends ArgsDef = ArgsDef> = {
     ? string | boolean | undefined
     : T[K] extends { type: 'boolean' }
       ? boolean
-      : T[K] extends { default: string } | { required: true }
-        ? string
-        : string | undefined
+      : OptionalUnless<T[K], T[K] extends { type: 'enum', options: readonly (infer V)[] } ? V : string>
 }
+
+type OptionalUnless<D, V> = D extends { default: string } | { required: true } ? V : V | undefined
 
 /** @deprecated See `commonArgs`. */
 export interface CommonArgs extends ArgsDef {
@@ -58,7 +63,7 @@ export const verboseArg: BooleanArgDef = {
 export const commonArgs: CommonArgs = { verbose: verboseArg }
 
 /** Parses `argv` against a definition. An absent boolean reads as `false`, and `--no-<name>` turns one off. */
-export function parseArgs<T extends ArgsDef>(
+export function parseArgs<const T extends ArgsDef>(
   argv: readonly string[],
   argsDef: T,
   { allowExtraPositionals = false }: { allowExtraPositionals?: boolean } = {},
@@ -91,6 +96,9 @@ export function parseArgs<T extends ArgsDef>(
 
     const value = parseResult.values[name]
 
+    if (definition.type === 'enum')
+      assertEnumValue(name, definition, value as string | undefined)
+
     if (definition.type === 'boolean')
       args[name] = value ?? false
     else if (value === undefined && definition.required === true)
@@ -122,7 +130,7 @@ export function toNodeOptions(argsDef: ArgsDef): Record<string, ParseArgsOptionD
     if (definition.type === 'positional')
       continue
 
-    const option: ParseArgsOptionDescriptor = { type: definition.type }
+    const option: ParseArgsOptionDescriptor = { type: definition.type === 'boolean' ? 'boolean' : 'string' }
     if (definition.alias !== undefined)
       option.short = definition.alias
     if (definition.default !== undefined)
@@ -167,7 +175,7 @@ function joinNegativeValues(argv: readonly string[], argsDef: ArgsDef): string[]
   const optionNamesBySpelling = new Map<string, string>()
 
   for (const [name, definition] of Object.entries(argsDef)) {
-    if (definition.type !== 'string')
+    if (definition.type !== 'string' && definition.type !== 'enum')
       continue
     optionNamesBySpelling.set(`--${name}`, name)
     if (definition.alias !== undefined)
@@ -196,6 +204,16 @@ function joinNegativeValues(argv: readonly string[], argsDef: ArgsDef): string[]
   }
 
   return joinedArguments
+}
+
+function assertEnumValue(name: string, definition: EnumArgDef, value: string | undefined): void {
+  const options = definition.options.join(', ')
+
+  if (definition.default !== undefined && !definition.options.includes(definition.default))
+    throw new Error(`The default of --${name}, ${JSON.stringify(definition.default)}, is not one of: ${options}`)
+
+  if (value !== undefined && !definition.options.includes(value))
+    throw new ArgumentError(`Invalid value for --${name}: ${JSON.stringify(value)}. Expected one of: ${options}`)
 }
 
 function isNodeArgumentError(error: unknown): error is Error {

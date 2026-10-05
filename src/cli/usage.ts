@@ -43,7 +43,9 @@ export function renderUsage<T extends ArgsDef>(command: CommandDef<T>, { command
     const spellings = [definition.alias === undefined ? undefined : `-${definition.alias}`, `--${name}`]
       .filter(spelling => spelling !== undefined)
       .join(', ')
-    const value = definition.type === 'string' ? `<${definition.valueHint ?? name}>` : undefined
+    const value = definition.type === 'boolean'
+      ? undefined
+      : `<${definition.valueHint ?? (definition.type === 'enum' ? definition.options.join('|') : name)}>`
     optionLines.push([color('cyan', spellings) + (value === undefined ? '' : color('dim', `=${value}`)), hints])
 
     if (definition.type === 'boolean' && definition.default === true)

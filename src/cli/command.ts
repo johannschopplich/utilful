@@ -1,4 +1,4 @@
-import type { ArgsDef, ParsedArgs } from './args'
+import type { ArgDef, ArgsDef, ParsedArgs } from './args'
 import type { ReportOptions } from './errors'
 import process from 'node:process'
 import { parseArgs as parseNodeArgs } from 'node:util'
@@ -33,7 +33,12 @@ export interface RunMainOptions extends Omit<ReportOptions, 'verbose'> {
 const HELP_FLAGS: ReadonlySet<string> = new Set(['--help', '-h'])
 const VERSION_FLAGS: ReadonlySet<string> = new Set(['--version', '-v'])
 
-export function defineCommand<T extends ArgsDef>(command: CommandDef<T>): CommandDef<T> {
+type ArgDefKey = ArgDef extends infer D ? D extends unknown ? keyof D : never : never
+
+/** Maps every key no argument definition knows to `never`, so a misspelled one fails where the arguments are passed. */
+type KnownKeysOnly<T> = { [K in keyof T]: { [P in keyof T[K]]: P extends ArgDefKey ? T[K][P] : never } }
+
+export function defineCommand<const T extends ArgsDef>(command: CommandDef<T> & { args?: KnownKeysOnly<T> }): CommandDef<T> {
   return command
 }
 

@@ -11,6 +11,8 @@ const buildCommand = defineCommand({
     'watch': { type: 'boolean', description: 'Rebuild on change', default: true },
     'json': { type: 'boolean', description: 'Print JSON', default: false },
     'token': { type: 'string', description: 'API token', required: true, valueHint: 'secret' },
+    'format': { type: 'enum', options: ['esm', 'iife'], description: 'Bundle format' },
+    'target': { type: 'enum', options: ['node', 'browser'], description: 'Runtime', valueHint: 'platform' },
   },
 })
 
@@ -93,6 +95,14 @@ describe('usage', () => {
   it('names the value of --token after its valueHint', () => {
     expect(buildUsage).toMatch(/^ +--token=<secret> +API token/m)
     expect(buildUsage).not.toContain('<token>')
+  })
+
+  it('names the options of --format as its value', () => {
+    expect(buildUsage).toMatch(/^ +--format=<esm\|iife> +Bundle format$/m)
+  })
+
+  it('names the value of --target after its valueHint, not its options', () => {
+    expect(buildUsage).toMatch(/^ +--target=<platform> +Runtime$/m)
   })
 
   it('omits (Default: false) from --json', () => {

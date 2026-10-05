@@ -1,4 +1,4 @@
-export type { ArgDef, ArgsDef, BooleanArgDef, CommonArgs, ParsedArgs, PositionalArgDef, StringArgDef } from './args'
+export type { ArgDef, ArgsDef, BooleanArgDef, CommonArgs, EnumArgDef, ParsedArgs, PositionalArgDef, StringArgDef } from './args'
 export { commonArgs, parseArgs } from './args'
 export type { CommandContext, CommandDef, CommandMeta, RunMainOptions } from './command'
 export { defineCommand, runCommand, runMain } from './command'
