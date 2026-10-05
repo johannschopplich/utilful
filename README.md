@@ -39,7 +39,7 @@ import { defu } from 'utilful' // Everything
 import { joinURL } from 'utilful/path' // Just the path helpers
 ```
 
-Two modules are the exception and live on their subpaths alone. `cli` is Node-only (22.13 or later) and ships as `utilful/cli` and `utilful/cli/testing`. `image` is browser-only and ships as `utilful/image`.
+Two modules are the exception and live on their subpaths alone. `cli` is Node-only (24.16 or later) and ships as `utilful/cli` and `utilful/cli/testing`. `image` is browser-only and ships as `utilful/image`.
 
 ## API
 
@@ -57,23 +57,26 @@ declare function toArray<T>(array?: MaybeArray<T> | null | undefined): T[]
 
 ### CLI
 
-A command runner on top of Node's `util.parseArgs`: strict option parsing, one level of sub-commands, `--help` and `--version`, and an error boundary that prints a recognized error as a message and anything else with its stack. `-h` and `-v` belong to the runner, so no option may take either letter as its alias.
+A command runner on top of Node's `util.parseArgs`: strict option parsing, sub-commands at any depth, `--help`, `--version` and `--verbose` on every command, and an error boundary that prints a recognized error as its message and causes, and anything else with its stack as well. `--verbose` adds the stack to every failure but a wrong argument. `-h` and `-v` belong to the runner, so no option may take either letter as its alias.
 
 #### `defineCommand`
 
-Types a command definition, so `run` receives its `args` typed by their definitions.
+Types a command definition, so `run` receives its `args` typed by their definitions. Declared `as const`, the arguments also type an exported command under `isolatedDeclarations`.
 
 ```ts
-import { CliError, commonArgs, defineCommand } from 'utilful/cli'
+import type { CommandDef } from 'utilful/cli'
+import { CliError, defineCommand } from 'utilful/cli'
 
-const build = defineCommand({
+const buildArgs = {
+  'file': { type: 'positional', description: 'Entry file', required: true }, // string
+  'out-dir': { type: 'string', alias: 'd', description: 'Output directory', valueHint: 'path' }, // string | undefined
+  'format': { type: 'enum', options: ['esm', 'iife'], default: 'esm' }, // 'esm' | 'iife'
+  'watch': { type: 'boolean', alias: 'w', description: 'Rebuild on change' }, // boolean, --no-watch turns it off
+} as const
+
+export const build: CommandDef<typeof buildArgs> = defineCommand({
   meta: { name: 'build', description: 'Compile the entry file' },
-  args: {
-    ...commonArgs, // Adds --verbose
-    'file': { type: 'positional', description: 'Entry file', required: true }, // string
-    'out-dir': { type: 'string', alias: 'd', description: 'Output directory', valueHint: 'path' }, // string | undefined
-    'watch': { type: 'boolean', alias: 'w', description: 'Rebuild on change' }, // boolean, --no-watch turns it off
-  },
+  args: buildArgs,
   run({ args }) {
     if (args.watch && args['out-dir'] === undefined)
       throw new CliError('--watch needs an --out-dir') // Printed as a message, no stack
@@ -96,11 +99,11 @@ const main = defineCommand({
 void runMain(main, { expectedErrors: [MyLibraryError] }) // Reported like a `CliError`
 ```
 
-Also exported: `runCommand` (runs the tree and throws instead of reporting), `parseArgs`, `reportFailure` (for a failure that outlives `run`, such as a watch rebuild), and `log` with `error`, `warn`, `info`, `success` and `blankLine`, all writing to stderr.
+Also exported: `runCommand` (runs the tree and throws instead of reporting), `parseArgs`, `reportFailure` (for a failure that outlives `run`, such as a watch rebuild), `readStdin` (everything piped in, as text), `paint` (`styleText` for a given stream, hex colors included), and `log` with `error`, `warn`, `info`, `success` and `blankLine`, all writing to stderr.
 
 #### `createCliHarness`
 
-From `utilful/cli/testing`, which needs `vitest`. `runCli` runs the tree in-process and captures both streams and the exit code, `runCliProcess` runs the entry file as a child process. `useTemporaryDirectories` and `mockStdin` ship alongside.
+From `utilful/cli/testing`, which needs `vitest`. `runCli` runs the tree in-process and captures both streams and the exit code, `runCliProcess` runs the entry file as a child process. Both take a `cwd` and an `env`, where `undefined` removes a variable. `useTemporaryDirectories` and `mockStdin` ship alongside and clean up after the test.
 
 ```ts
 import { createCliHarness, useTemporaryDirectories } from 'utilful/cli/testing'
