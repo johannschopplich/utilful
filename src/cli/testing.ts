@@ -21,6 +21,7 @@ export interface CliResult {
 
 export interface RunOptions {
   cwd?: string
+  env?: Record<string, string | undefined>
 }
 
 export interface CliHarnessOptions extends Omit<RunMainOptions, 'argv'> {
@@ -50,6 +51,7 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
       const stderr: string[] = []
       const previousExitCode = process.exitCode
       const previousCwd = process.cwd()
+      const previousEnv = Object.fromEntries(Object.keys(options.env ?? {}).map(name => [name, process.env[name]]))
       process.exitCode = undefined
 
       const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
@@ -75,6 +77,7 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
       try {
         if (options.cwd !== undefined)
           process.chdir(options.cwd)
+        setEnv(options.env ?? {})
 
         await runMain(command, { ...runOptions, argv })
         exitCode = process.exitCode ?? 0
@@ -87,6 +90,7 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
       }
       finally {
         process.chdir(previousCwd)
+        setEnv(previousEnv)
         process.exitCode = previousExitCode
         exitSpy.mockRestore()
         consoleErrorSpy.mockRestore()
@@ -106,7 +110,8 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
         execFile(
           process.execPath,
           [entry, ...argv],
-          { cwd: options.cwd, maxBuffer: 64 * 1024 * 1024 },
+          // A variable set to `undefined` never reaches the child.
+          { cwd: options.cwd, env: { ...process.env, ...options.env }, maxBuffer: 64 * 1024 * 1024 },
           (spawnError, stdout, stderr) => {
             // A numeric `code` is the child's exit status; anything else failed to spawn.
             if (spawnError && typeof spawnError.code !== 'number')
@@ -117,6 +122,15 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
         )
       })
     },
+  }
+}
+
+function setEnv(env: Record<string, string | undefined>): void {
+  for (const [name, value] of Object.entries(env)) {
+    if (value === undefined)
+      delete process.env[name]
+    else
+      process.env[name] = value
   }
 }
 

@@ -1,7 +1,9 @@
+import * as path from 'node:path'
 import process from 'node:process'
 import { text } from 'node:stream/consumers'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { mockStdin } from './testing'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { defineCommand } from './command'
+import { createCliHarness, mockStdin, useTemporaryDirectories } from './testing'
 
 const originalStdin = process.stdin
 
@@ -37,5 +39,42 @@ describe('mockStdin', () => {
     restoreStdin()
 
     expect(process.stdin).toBe(originalStdin)
+  })
+})
+
+describe('env', () => {
+  const createDirectory = useTemporaryDirectories()
+  const printEnv = defineCommand({
+    run() {
+      process.stdout.write(`${JSON.stringify({ added: process.env.UTILFUL_ADDED, removed: process.env.UTILFUL_REMOVED })}\n`)
+    },
+  })
+  const { runCli } = createCliHarness(printEnv)
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it.each([
+    ['runCli', () => runCli([], { env: { UTILFUL_ADDED: 'yes', UTILFUL_REMOVED: undefined } })],
+    ['runCliProcess', () => {
+      const entry = path.join(createDirectory({ 'entry.mjs': 'console.log(JSON.stringify({ added: process.env.UTILFUL_ADDED, removed: process.env.UTILFUL_REMOVED }))' }), 'entry.mjs')
+      return createCliHarness(printEnv, { entry }).runCliProcess([], { env: { UTILFUL_ADDED: 'yes', UTILFUL_REMOVED: undefined } })
+    }],
+  ])('sets and removes variables for %s', async (_, run) => {
+    vi.stubEnv('UTILFUL_REMOVED', 'still here')
+
+    const { stdout } = await run()
+
+    expect(JSON.parse(stdout)).toEqual({ added: 'yes' })
+  })
+
+  it('leaves the environment as it was after runCli', async () => {
+    vi.stubEnv('UTILFUL_REMOVED', 'still here')
+
+    await runCli([], { env: { UTILFUL_ADDED: 'yes', UTILFUL_REMOVED: undefined } })
+
+    expect(process.env.UTILFUL_ADDED).toBeUndefined()
+    expect(process.env.UTILFUL_REMOVED).toBe('still here')
   })
 })
