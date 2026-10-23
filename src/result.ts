@@ -134,7 +134,7 @@ export function toResult<T, E = unknown>(fn: () => T): Result<T, E>
 export function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
 export function toResult<T, E = unknown>(fnOrPromise: (() => T) | Promise<T>): Result<T, E> | Promise<Result<T, E>> {
   if (fnOrPromise instanceof Promise) {
-    return fnOrPromise.then(ok).catch(err as (error: unknown) => Err<T, E>)
+    return fnOrPromise.then(ok, err as (error: unknown) => Err<T, E>)
   }
 
   let value: T
@@ -169,9 +169,7 @@ export function tryCatch<T, E = unknown>(
   fnOrPromise: (() => T) | Promise<T>,
 ): ResultData<T, E> | Promise<ResultData<T, E>> {
   if (fnOrPromise instanceof Promise) {
-    return toResult<T, E>(fnOrPromise).then(result =>
-      unwrapResult<T, E>(result),
-    )
+    return toResult<T, E>(fnOrPromise).then(unwrapResult<T, E>)
   }
 
   return unwrapResult(toResult<T, E>(fnOrPromise))
