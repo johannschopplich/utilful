@@ -85,7 +85,7 @@ export class Err<T, E> {
   }
 
   unwrap(message?: string): never {
-    throw new Error(message ?? `unwrap called on Err: ${String(this.error)}`)
+    throw new Error(message ?? `unwrap called on Err: ${String(this.error)}`, { cause: this.error })
   }
 
   unwrapErr(_message?: string): E {

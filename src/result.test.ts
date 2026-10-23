@@ -114,6 +114,11 @@ describe('unwrap', () => {
   it('throws a default message containing the error', () => {
     expect(() => err('my error').unwrap()).toThrow(/my error/)
   })
+
+  it('throws with the error as cause for an Err', () => {
+    const error = new Error('db down')
+    expect(() => err(error).unwrap()).toThrow(expect.objectContaining({ cause: error }))
+  })
 })
 
 describe('unwrapErr', () => {

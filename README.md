@@ -773,7 +773,7 @@ err('fail').andThen(x => ok(x * 2)) // Err('fail') – short-circuits
 
 #### `Result.unwrap`
 
-Extracts the value or throws an error.
+Extracts the value or throws an error with the `Err`'s error as `cause`.
 
 ```ts
 ok(42).unwrap() // 42
