@@ -120,18 +120,6 @@ export function err<T = never, E = unknown>(error: E): Err<T, E> {
 
 // #endregion
 
-// #region Type guards
-
-export function isOk<T, E>(result: Result<T, E>): result is Ok<T, E> {
-  return result.ok === true
-}
-
-export function isErr<T, E>(result: Result<T, E>): result is Err<T, E> {
-  return result.ok === false
-}
-
-// #endregion
-
 // #region Result conversion
 
 /**

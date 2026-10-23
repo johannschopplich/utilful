@@ -695,6 +695,8 @@ type Result<T, E> = Ok<T, E> | Err<T, E>
 
 Both variants carry the success *and* the error type, so the two stay in sync as you chain `map` and `mapError` calls.
 
+The `ok` property tells the variants apart: `if (result.ok)` narrows to `Ok`, and `results.filter(result => result.ok)` narrows to `Ok[]`.
+
 **Basic example:**
 
 ```ts
@@ -740,24 +742,6 @@ Creates an error result.
 ```ts
 declare function err<T = never, E extends string = string>(error: E): Err<T, E>
 declare function err<T = never, E = unknown>(error: E): Err<T, E>
-```
-
-#### `isOk` / `isErr`
-
-Type guards for narrowing `Result` types.
-
-```ts
-declare function isOk<T, E>(result: Result<T, E>): result is Ok<T, E>
-declare function isErr<T, E>(result: Result<T, E>): result is Err<T, E>
-```
-
-**Example:**
-
-```ts
-const result = toResult(() => JSON.parse(str))
-if (isOk(result)) {
-  console.log(result.value) // TypeScript knows this is Ok
-}
 ```
 
 #### `Result.map`

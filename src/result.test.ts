@@ -1,6 +1,6 @@
 import type { Result, ResultData } from './result'
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { Err, err, isErr, isOk, Ok, ok, toResult, tryCatch, unwrapResult } from './result'
+import { Err, err, Ok, ok, toResult, tryCatch, unwrapResult } from './result'
 
 describe('ok', () => {
   it('wraps the value in an Ok', () => {
@@ -32,37 +32,15 @@ describe('err', () => {
   })
 })
 
-describe('isOk', () => {
-  it('returns true for an Ok', () => {
-    expect(isOk(ok(1))).toBe(true)
+describe('ok property', () => {
+  it('filtering on ok narrows a Result array to Ok', () => {
+    const results = [ok(1), err('fail')] as Result<number, string>[]
+    expectTypeOf(results.filter(result => result.ok)).toEqualTypeOf<Ok<number, string>[]>()
   })
 
-  it('returns false for an Err', () => {
-    expect(isOk(err('fail'))).toBe(false)
-  })
-
-  it('narrows a Result to Ok', () => {
-    const result = ok(1) as Result<number, string>
-    if (isOk(result)) {
-      expectTypeOf(result).toEqualTypeOf<Ok<number, string>>()
-    }
-  })
-})
-
-describe('isErr', () => {
-  it('returns true for an Err', () => {
-    expect(isErr(err('fail'))).toBe(true)
-  })
-
-  it('returns false for an Ok', () => {
-    expect(isErr(ok(1))).toBe(false)
-  })
-
-  it('narrows a Result to Err', () => {
-    const result = err('fail') as Result<number, string>
-    if (isErr(result)) {
-      expectTypeOf(result).toEqualTypeOf<Err<number, string>>()
-    }
+  it('filtering on !ok narrows a Result array to Err', () => {
+    const results = [ok(1), err('fail')] as Result<number, string>[]
+    expectTypeOf(results.filter(result => !result.ok)).toEqualTypeOf<Err<number, string>[]>()
   })
 })
 
