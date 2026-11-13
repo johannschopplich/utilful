@@ -18,6 +18,7 @@ A collection of TypeScript utilities that I use across my projects.
   - [Path](#path)
   - [Result](#result)
   - [String](#string)
+  - [Types](#types)
 
 ## Installation
 
@@ -57,7 +58,7 @@ declare function toArray<T>(array?: MaybeArray<T> | null | undefined): T[]
 
 ### CLI
 
-A command runner on top of Node's `util.parseArgs`: strict option parsing, sub-commands at any depth, `--help`, `--version` and `--verbose` on every command, and an error boundary that prints a recognized error as its message and causes, and anything else with its stack as well. `--verbose` adds the stack to every failure but a wrong argument. `-h` and `-v` belong to the runner, so no option may take either letter as its alias.
+A command runner on top of Node's `util.parseArgs`: strict option parsing, sub-commands at any depth, `--help`, `--version` and `--verbose` on every command, and an error boundary that prints an expected error as its message and causes, and anything else with its stack as well. `--verbose` adds the stack to every failure but a wrong argument. `-h` and `-v` belong to the runner, so no option may take either letter as its alias.
 
 #### `defineCommand`
 
@@ -99,7 +100,16 @@ const main = defineCommand({
 void runMain(main, { expectedErrors: [MyLibraryError] }) // Reported like a `CliError`
 ```
 
-Also exported: `runCommand` (runs the tree and throws instead of reporting), `parseArgs`, `reportFailure` (for a failure that outlives `run`, such as a watch rebuild), `readStdin` (everything piped in, as text), `paint` (`styleText` for a given stream, hex colors included), and `log` with `error`, `warn`, `info`, `success` and `blankLine`, all writing to stderr.
+Also exported:
+
+- `runCommand` – runs the tree and throws instead of reporting
+- `parseArgs` – parses `argv` against argument definitions, as the runner does
+- `CliError` – the error to throw for a failure the user can fix
+- `ArgumentError` – a `CliError` for a wrong argument
+- `reportFailure` – reports a failure that outlives `run`, such as a watch rebuild
+- `readStdin` – everything piped in, as text
+- `paint` – `styleText` for a given stream, hex colors included
+- `log` – `error`, `warn`, `info`, `success` and `blankLine`, all writing to stderr
 
 #### `createCliHarness`
 
@@ -123,9 +133,20 @@ it('rejects an unknown option', async () => {
 
 #### `createCSV`
 
-Converts an array of objects to a comma-separated values (CSV) string. You can either specify which columns to include explicitly, or let the function automatically infer all columns from your data.
+Converts an array of objects to a comma-separated values (CSV) string, with the columns you pass or with every column inferred from the data.
 
 ```ts
+interface CSVCreateOptions {
+  /** @default ',' */
+  delimiter?: string
+  /** @default true */
+  addHeader?: boolean
+  /** @default false */
+  quoteAll?: boolean
+  /** @default '\n' */
+  lineEnding?: string
+}
+
 // With explicit columns
 declare function createCSV<T extends Record<string, unknown>>(
   data: readonly T[],
@@ -157,7 +178,7 @@ const csv = createCSV(data, ['name', 'age'])
 
 **Example with automatic column inference:**
 
-When you omit the `columns` parameter, `createCSV` automatically collects all unique keys from your data in first-seen order. This is particularly useful when working with data that has varying structures:
+Without `columns`, `createCSV` collects the keys of all rows in first-seen order:
 
 ```ts
 const rows = [
@@ -176,10 +197,7 @@ const csv = createCSV(rows)
 
 #### `parseCSV`
 
-Parses a comma-separated values (CSV) string into an array of objects.
-
-> [!NOTE]
-> The first row of the CSV string is used as the header row. A leading UTF-8 byte order mark is stripped.
+Parses a comma-separated values (CSV) string into an array of objects, with the first row as the header row. A leading UTF-8 byte order mark is stripped.
 
 ```ts
 type CSVRow<T extends string = string> = Record<T, string>
@@ -228,8 +246,7 @@ const data = parseCSV<'name' | 'age'>(csv) // [{ name: 'John', age: '30' }, { na
 
 Creates a CSV stream from an iterable or async iterable of objects. Yields complete lines (header and/or data rows) including line endings – useful for large datasets that should not be buffered in memory.
 
-> [!NOTE]
-> Unlike `createCSV`, `columns` is required here. Inferring them would mean reading every row before writing the first one, which is exactly what streaming avoids.
+Unlike `createCSV`, `columns` is required here: inferring them would mean reading every row before writing the first one.
 
 ```ts
 declare function createCSVStream<T extends Record<string, unknown>>(
@@ -249,10 +266,7 @@ for await (const chunk of createCSVStream(rows, ['name', 'age'])) {
 
 #### `createCSVAsync`
 
-Convenience wrapper around `createCSVStream` that collects all chunks into a single string.
-
-> [!NOTE]
-> Unlike `createCSV`, the result has a trailing line ending.
+Collects the chunks of `createCSVStream` into a single string. Unlike `createCSV`, the result has a trailing line ending.
 
 ```ts
 declare function createCSVAsync<T extends Record<string, unknown>>(
@@ -264,7 +278,7 @@ declare function createCSVAsync<T extends Record<string, unknown>>(
 
 #### `parseCSVStream`
 
-Parses CSV data from an iterable or async iterable of string chunks, yielding rows as soon as they are complete. Chunks do not need to align with row boundaries – quotes and newlines are handled correctly across chunk boundaries.
+Parses CSV data from an iterable or async iterable of string chunks, yielding rows as soon as they are complete. Chunks do not need to align with row boundaries – quotes and newlines are handled correctly across chunk boundaries. An array of lines only parses when each line keeps its line ending.
 
 ```ts
 declare function parseCSVStream<Header extends string>(
@@ -282,9 +296,6 @@ for await (const row of parseCSVStream<'name' | 'age'>(chunks)) {
   console.log(row) // { name: 'John', age: '30' }, then { name: 'Jane', age: '25' }
 }
 ```
-
-> [!TIP]
-> `parseCSVStream` accepts any iterable of strings, including an array of lines.
 
 #### `escapeCSVValue`
 
@@ -320,12 +331,10 @@ Recursively assigns missing properties from defaults to the source object. The s
 The function replaces `null` and `undefined` values in the source with defaults, concatenates arrays (source + defaults), and recursively merges nested objects.
 
 ```ts
-type PlainObject = Record<PropertyKey, any>
-
-declare function defu<Source extends PlainObject, Defaults extends PlainObject[]>(
-  source: Source,
-  ...defaults: Defaults
-): Defu<Source, Defaults>
+declare function defu<
+  Source extends Record<PropertyKey, any>,
+  Defaults extends Record<PropertyKey, any>[]
+>(source: Source, ...defaults: Defaults): Defu<Source, Defaults>
 ```
 
 The return type is a deep merge of the source over the defaults, so keys that only exist in the defaults are part of the result type:
@@ -372,7 +381,7 @@ const result = defu(
 Creates a `defu` variant that hands every property to your own merger first. Return `true` to signal you handled it; return nothing to fall back to the default behavior.
 
 ```ts
-type DefuMerger<T extends PlainObject = PlainObject> = (
+type DefuMerger<T extends Record<PropertyKey, any> = Record<PropertyKey, any>> = (
   target: T,
   key: PropertyKey,
   value: any,
@@ -403,6 +412,10 @@ const result = addNumbers({ cost: 15 }, { cost: 10 })
 
 Tiny functional event emitter / pubsub, based on [mitt](https://github.com/developit/mitt).
 
+#### `createEmitter`
+
+Creates an emitter whose events are typed by `Events`, a map of event type to payload. Pass an existing handler map, such as another emitter's `events`, to share its handlers.
+
 **Example:**
 
 ```ts
@@ -430,6 +443,7 @@ emitter.events.clear()
 function onFoo() {}
 emitter.on('foo', onFoo) // Listen
 emitter.off('foo', onFoo) // Unlisten
+emitter.off('foo') // Unlisten every handler of `foo`
 ```
 
 ### Image
@@ -485,9 +499,7 @@ const webp = await toReducedBlob(file, { maxDimension: 1024, type: 'image/webp',
 
 #### `tryParseJSON`
 
-Type-safe wrapper around `JSON.parse`.
-
-Falls back to the original value if parsing fails or the value is not a string.
+Wraps `JSON.parse` with a typed return value. Falls back to the original value if parsing fails or the value is not a string.
 
 ```ts
 declare function tryParseJSON<T = unknown>(value: unknown): T
@@ -497,7 +509,7 @@ declare function tryParseJSON<T = unknown>(value: unknown): T
 
 #### `interopDefault`
 
-Interop helper for default exports.
+Resolves a module, or a promise of one, to its `default` export, or to the module itself if it has none.
 
 ```ts
 declare function interopDefault<T>(m: T | Promise<T>): Promise<T extends {
@@ -630,11 +642,13 @@ withoutBase('/api/users', '/api') // '/users'
 
 Returns the pathname of the given path – everything before the query string or hash. Absolute URLs return the part after the host, whether they carry a scheme (`https://example.com/foo`) or are protocol-relative (`//example.com/foo`).
 
-The pathname is sliced out as written and never normalized, so percent-encoding and `..` segments survive:
+The pathname is sliced out as written and never normalized, so percent-encoding and `..` segments survive.
 
 ```ts
 declare function getPathname(path?: string): string
 ```
+
+**Example:**
 
 ```ts
 getPathname('/foo?bar#baz') // '/foo'
@@ -687,7 +701,7 @@ getQuery('/api/users') // {}
 
 ### Result
 
-The `Result` type represents either success (`Ok`) or failure (`Err`). It provides a type-safe way to handle errors without relying on exceptions.
+A `Result` is either a success (`Ok`) or a failure (`Err`), so a function can return its error as a typed value instead of throwing it.
 
 ```ts
 type Result<T, E> = Ok<T, E> | Err<T, E>
@@ -724,7 +738,7 @@ import { toResult } from 'utilful'
 const name = toResult(() => JSON.parse(jsonString))
   .map(data => data.user)
   .map(user => user.name)
-  .unwrapOr('Anonymous')
+  .unwrapOr('Anonymous') // Fallback only for invalid JSON – a throw inside `map` is not caught
 ```
 
 #### `ok`
@@ -759,7 +773,7 @@ Transforms the error value. No-op on `Ok`.
 
 ```ts
 err('fail').mapError(e => e.toUpperCase()) // Err('FAIL')
-ok(42).mapError(e => e.toUpperCase()) // Ok(42)
+ok<number, string>(42).mapError(e => e.toUpperCase()) // Ok(42)
 ```
 
 #### `Result.andThen`
@@ -820,8 +834,7 @@ declare function toResult<T, E = unknown>(fn: () => T): Result<T, E>
 declare function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T, E>>
 ```
 
-> [!NOTE]
-> The function overload must be synchronous. For asynchronous work, pass the promise itself – a function returning a promise throws a `TypeError`, since its rejection could not be captured as `Err`.
+The function overload must be synchronous. For asynchronous work, pass the promise itself – a function returning a promise throws a `TypeError`, since its rejection could not be captured as `Err`.
 
 **Example:**
 
@@ -830,7 +843,7 @@ declare function toResult<T, E = unknown>(promise: Promise<T>): Promise<Result<T
 const result = toResult(() => JSON.parse('{"foo":"bar"}'))
 
 // Asynchronous
-const result = await toResult(fetch('https://api.example.com'))
+const fetchResult = await toResult(fetch('https://api.example.com'))
 ```
 
 #### `unwrapResult`
@@ -845,15 +858,14 @@ declare function unwrapResult<T, E>(result: Result<T, E>): { value: T, error: un
 
 #### `tryCatch`
 
-Combines `toResult` and `unwrapResult` into one step. Executes a function and returns `{ value, error }` directly.
+Combines `toResult` and `unwrapResult` into one step: runs a function or awaits a promise, and returns `{ value, error }`.
 
 ```ts
 declare function tryCatch<T, E = unknown>(fn: () => T): { value: T, error: undefined } | { value: undefined, error: E }
 declare function tryCatch<T, E = unknown>(promise: Promise<T>): Promise<{ value: T, error: undefined } | { value: undefined, error: E }>
 ```
 
-> [!NOTE]
-> Like `toResult`, the function overload must be synchronous, and passing a function that returns a promise throws a `TypeError` rather than returning it as an error. Pass the promise itself.
+As with `toResult`, a function that returns a promise throws a `TypeError` – pass the promise itself.
 
 **Example:**
 
@@ -862,7 +874,7 @@ declare function tryCatch<T, E = unknown>(promise: Promise<T>): Promise<{ value:
 const { value, error } = tryCatch(() => JSON.parse('{"foo":"bar"}'))
 
 // Asynchronous
-const { value, error } = await tryCatch(fetch('https://api.example.com').then(r => r.json()))
+const { value: data, error: fetchError } = await tryCatch(fetch('https://api.example.com').then(r => r.json()))
 ```
 
 ### String
@@ -894,13 +906,45 @@ console.log(template(str, variables)) // Hello, world!
 
 #### `generateRandomId`
 
-Generates a random string. Ported from [`nanoid`](https://github.com/ai/nanoid). You can specify the length and the dictionary of characters to draw from.
+Generates a random string of `size` characters drawn from `dict`. `size` defaults to `16`, and `dict` to the 64 URL-safe characters `A-Za-z0-9_-`. Ported from [`nanoid`](https://github.com/ai/nanoid).
 
 > [!WARNING]
 > Backed by `Math.random()` and therefore not cryptographically secure. Use `crypto.randomUUID()` or `crypto.getRandomValues()` for session tokens, password resets, and anything else an attacker would like to guess.
 
 ```ts
 declare function generateRandomId(size?: number, dict?: string): string
+```
+
+### Types
+
+#### `UnifyIntersection`
+
+Flattens an intersection into a single object type, so an editor shows its properties instead of `A & B`. Commonly known as `Prettify`.
+
+**Example:**
+
+```ts
+import type { UnifyIntersection } from 'utilful'
+
+type User = UnifyIntersection<{ id: number } & { name: string }> // { id: number, name: string }
+```
+
+#### `BrandedType`
+
+Brands the type `T` with `B`, so two types of the same shape are not assignable to each other.
+
+**Example:**
+
+```ts
+import type { BrandedType } from 'utilful'
+
+type UserId = BrandedType<string, 'UserId'>
+
+declare function getUser(id: UserId): void
+
+getUser('42' as UserId)
+// @ts-expect-error: a plain string is not a `UserId`
+getUser('42')
 ```
 
 ## License
