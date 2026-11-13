@@ -356,26 +356,6 @@ const result = defu(
 // Result: { a: 1, b: { x: 1, y: 2 }, c: 3 }
 ```
 
-**Array concatenation example:**
-
-```ts
-const result = defu(
-  { items: ['a', 'b'] },
-  { items: ['c', 'd'] }
-)
-// Result: { items: ['a', 'b', 'c', 'd'] }
-```
-
-**Handling null/undefined:**
-
-```ts
-const result = defu(
-  { name: null, age: undefined },
-  { name: 'John', age: 30, city: 'NYC' }
-)
-// Result: { name: 'John', age: 30, city: 'NYC' }
-```
-
 #### `createDefu`
 
 Creates a `defu` variant that hands every property to your own merger first. Return `true` to signal you handled it; return nothing to fall back to the default behavior.
@@ -450,7 +430,7 @@ emitter.off('foo') // Unlisten every handler of `foo`
 
 #### `toReducedBlob`
 
-Downscales an image blob so its longer side fits `maxDimension` and re-encodes it. Resizing happens in `createImageBitmap` with `resizeQuality: 'high'`, so the canvas only ever holds the reduced image.
+Downscales an image blob so its longer side fits `maxDimension` and re-encodes it.
 
 ```ts
 type ReducedBlobType = 'image/jpeg' | 'image/png' | 'image/webp'
@@ -479,9 +459,8 @@ interface ReducedBlobOptions {
 declare function toReducedBlob(blob: Blob, options?: ReducedBlobOptions): Promise<Blob>
 ```
 
-The original blob comes back untouched when the image already fits and the output type matches the source type. Anything else is re-encoded:
+The original blob comes back untouched when the image already fits, the output type matches the source type, and `stripMetadata` is off. Anything else is re-encoded:
 
-- Re-encoding drops EXIF data such as the location. Set `stripMetadata` to re-encode an image that would otherwise be returned as it is.
 - Any other source type, like HEIC or GIF, becomes JPEG. Animation is lost and transparent pixels turn black – pass `type: 'image/png'` to keep transparency.
 - The function throws if the browser cannot encode the output type, rather than silently returning PNG. Safari cannot encode WebP, which includes a WebP source without an explicit `type`.
 - Re-encoding an image that is not resized draws it at full size. Safari on iOS 17 and earlier limits a canvas to 16.7 megapixels and throws beyond that, so pass `maxDimension` along for camera photos.
@@ -533,7 +512,7 @@ async function loadModule() {
 
 Defers a computation until the value is first read, then caches it.
 
-Useful for expensive setup you may never need. Unlike a plain getter, there is no runtime cost after the first read, because the getter replaces itself with the computed value.
+Useful for expensive setup you may never need.
 
 ```ts
 declare function memoize<T>(getter: () => T): { value: T }
@@ -543,9 +522,8 @@ declare function memoize<T>(getter: () => T): { value: T }
 
 ```ts
 const myValue = memoize(() => 'Hello, World!')
-console.log(myValue.value) // Computes value, overwrites getter
-console.log(myValue.value) // Returns cached value
-console.log(myValue.value) // Returns cached value
+console.log(myValue.value) // Computes the value
+console.log(myValue.value) // Returns the cached value
 ```
 
 #### `objectKeys`
@@ -587,7 +565,7 @@ declare function isObject(value: unknown): value is Record<any, any>
 
 ### Path
 
-Utilities to build and normalize URL paths. They slice strings instead of parsing a full `URL`, which keeps them cheap enough for hot paths. Only `withQuery` and `getQuery` reach for `URLSearchParams`, where correct percent-encoding is worth the allocation.
+Utilities to build and normalize URL paths.
 
 #### `withoutLeadingSlash` / `withLeadingSlash`
 
@@ -706,8 +684,6 @@ A `Result` is either a success (`Ok`) or a failure (`Err`), so a function can re
 ```ts
 type Result<T, E> = Ok<T, E> | Err<T, E>
 ```
-
-Both variants carry the success *and* the error type, so the two stay in sync as you chain `map` and `mapError` calls.
 
 The `ok` property tells the variants apart: `if (result.ok)` narrows to `Ok`, and `results.filter(result => result.ok)` narrows to `Ok[]`.
 
