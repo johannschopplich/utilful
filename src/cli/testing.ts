@@ -46,7 +46,9 @@ class ProcessExitError extends Error {
 }
 
 export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { entry, ...runOptions }: CliHarnessOptions = {}): CliHarness {
-  const entryPath = entry === undefined ? undefined : path.resolve(entry)
+  const entryPath = entry === undefined
+    ? undefined
+    : path.resolve(entry)
 
   return {
     async runCli(argv, options = {}) {
@@ -66,13 +68,21 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
         return true
       })
       // Node's mapping of these methods onto the two streams.
-      const consoleSpies = ([['log', stdout], ['info', stdout], ['debug', stdout], ['warn', stderr], ['error', stderr]] as const).map(([method, chunks]) =>
+      const consoleSpies = ([
+        ['log', stdout],
+        ['info', stdout],
+        ['debug', stdout],
+        ['warn', stderr],
+        ['error', stderr],
+      ] as const).map(([method, chunks]) =>
         vi.spyOn(console, method).mockImplementation((...parts: unknown[]) => {
           chunks.push(`${format(...parts)}\n`)
         }),
       )
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code) => {
-        throw new ProcessExitError(typeof code === 'number' ? code : 0)
+        throw new ProcessExitError(typeof code === 'number'
+          ? code
+          : 0)
       })
 
       let exitCode: number
@@ -102,7 +112,11 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
         stdoutSpy.mockRestore()
       }
 
-      return { stdout: stdout.join(''), stderr: stderr.join(''), exitCode }
+      return {
+        stdout: stdout.join(''),
+        stderr: stderr.join(''),
+        exitCode,
+      }
     },
 
     runCliProcess(argv, options = {}) {
@@ -114,13 +128,26 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
           process.execPath,
           [entryPath, ...argv],
           // A variable set to `undefined` never reaches the child.
-          { cwd: options.cwd, env: { ...process.env, ...options.env }, maxBuffer: 64 * 1024 * 1024 },
+          {
+            cwd: options.cwd,
+            env: {
+              ...process.env,
+              ...options.env,
+            },
+            maxBuffer: 64 * 1024 * 1024,
+          },
           (spawnError, stdout, stderr) => {
             // A numeric `code` is the child's exit status; anything else failed to spawn.
-            if (spawnError && typeof spawnError.code !== 'number')
+            if (spawnError && typeof spawnError.code !== 'number') {
               reject(spawnError)
-            else
-              resolve({ stdout, stderr, exitCode: spawnError ? spawnError.code as number : 0 })
+            }
+            else {
+              resolve({
+                stdout,
+                stderr,
+                exitCode: spawnError ? spawnError.code as number : 0,
+              })
+            }
           },
         )
       })
@@ -163,7 +190,9 @@ export function useTemporaryDirectories(prefix = 'cli-test-'): (files?: FileMap)
 /** Pipes `input` into stdin until the test finishes; the function it returns restores stdin earlier. */
 export function mockStdin(input: string): () => void {
   // Real stdin hands over bytes, and a strict UTF-8 check depends on getting them.
-  const stream = Readable.from([new TextEncoder().encode(input)])
+  const stream = Readable.from([
+    new TextEncoder().encode(input),
+  ])
   const originalStdin = process.stdin
   const restoreStdin = (): void => {
     Object.defineProperty(process, 'stdin', { value: originalStdin, writable: true })

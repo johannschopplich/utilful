@@ -118,10 +118,15 @@ function _defu<T extends PlainObject>(
       continue
     }
 
-    const currentNamespace = namespace ? `${namespace}.${key}` : key
+    const currentNamespace = namespace
+      ? `${namespace}.${key}`
+      : key
 
     if (Array.isArray(value) && Array.isArray(result[key])) {
-      result[key] = [...value, ...result[key]]
+      result[key] = [
+        ...value,
+        ...result[key],
+      ]
     }
     else if (isPlainObject(value) && isPlainObject(result[key])) {
       result[key] = _defu(value, result[key], currentNamespace, merger)

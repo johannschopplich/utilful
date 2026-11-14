@@ -101,25 +101,67 @@ describe('joinURL', () => {
   it.each<{ input: (string | undefined)[], out: string }>([
     // Empty or single segment
     { input: [], out: '' },
-    { input: ['/'], out: '/' },
+    {
+      input: ['/'],
+      out: '/',
+    },
     // Falsy segments
-    { input: ['', 'a'], out: 'a' },
-    { input: ['a', undefined, 'b'], out: 'a/b' },
-    { input: ['a', '', 'b'], out: 'a/b' },
+    {
+      input: ['', 'a'],
+      out: 'a',
+    },
+    {
+      input: ['a', undefined, 'b'],
+      out: 'a/b',
+    },
+    {
+      input: ['a', '', 'b'],
+      out: 'a/b',
+    },
     // The first segment keeps its trailing slash when nothing follows.
-    { input: [undefined, './'], out: './' },
+    {
+      input: [undefined, './'],
+      out: './',
+    },
     // Basic joining
-    { input: ['a', 'b'], out: 'a/b' },
-    { input: ['a', 'b/', 'c'], out: 'a/b/c' },
+    {
+      input: ['a', 'b'],
+      out: 'a/b',
+    },
+    {
+      input: ['a', 'b/', 'c'],
+      out: 'a/b/c',
+    },
     // Slashes between segments
-    { input: ['/', '/b'], out: '/b' },
-    { input: ['/', '/', '/'], out: '/' },
-    { input: ['a', '/', 'b'], out: 'a/b' },
-    { input: ['a', 'b/', '/c'], out: 'a/b/c' },
-    { input: ['a//b', 'c'], out: 'a//b/c' },
+    {
+      input: ['/', '/b'],
+      out: '/b',
+    },
+    {
+      input: ['/', '/', '/'],
+      out: '/',
+    },
+    {
+      input: ['a', '/', 'b'],
+      out: 'a/b',
+    },
+    {
+      input: ['a', 'b/', '/c'],
+      out: 'a/b/c',
+    },
+    {
+      input: ['a//b', 'c'],
+      out: 'a//b/c',
+    },
     // Absolute URLs
-    { input: ['https://example.com', 'foo'], out: 'https://example.com/foo' },
-    { input: ['https://example.com/', '/foo'], out: 'https://example.com/foo' },
+    {
+      input: ['https://example.com', 'foo'],
+      out: 'https://example.com/foo',
+    },
+    {
+      input: ['https://example.com/', '/foo'],
+      out: 'https://example.com/foo',
+    },
   ])('joins $input into $out', ({ input, out }) => {
     expect(joinURL(...input)).toBe(out)
   })
@@ -231,27 +273,97 @@ describe('getPathname', () => {
 describe('withQuery', () => {
   it.each<{ input: string, query: QueryObject, out: string }>([
     // Merging into existing parameters
-    { input: '/?test', query: { foo: 1 }, out: '/?test=&foo=1' },
-    { input: '/?foo=1', query: { foo: 2 }, out: '/?foo=2' },
-    { input: '/?foo=1', query: { foo: true, bar: false }, out: '/?foo=true&bar=false' },
+    {
+      input: '/?test',
+      query: { foo: 1 },
+      out: '/?test=&foo=1',
+    },
+    {
+      input: '/?foo=1',
+      query: { foo: 2 },
+      out: '/?foo=2',
+    },
+    {
+      input: '/?foo=1',
+      query: { foo: true, bar: false },
+      out: '/?foo=true&bar=false',
+    },
     // `undefined` removes, `null` keeps an empty value
-    { input: '/?foo=1', query: { foo: undefined }, out: '/' },
-    { input: '/?foo=1', query: { foo: null }, out: '/?foo=' },
+    {
+      input: '/?foo=1',
+      query: { foo: undefined },
+      out: '/',
+    },
+    {
+      input: '/?foo=1',
+      query: { foo: null },
+      out: '/?foo=',
+    },
     // Percent-encoding
-    { input: '/', query: { email: 'some email.com' }, out: '/?email=some+email.com' },
-    { input: '/', query: { 'key with space': 'spaced value' }, out: '/?key+with+space=spaced+value' },
-    { input: '/', query: { str: '&', str2: '%26' }, out: '/?str=%26&str2=%2526' },
-    { input: '/?x=1,2,3', query: { y: '1,2,3' }, out: '/?x=1%2C2%2C3&y=1%2C2%2C3' },
+    {
+      input: '/',
+      query: { email: 'some email.com' },
+      out: '/?email=some+email.com',
+    },
+    {
+      input: '/',
+      query: { 'key with space': 'spaced value' },
+      out: '/?key+with+space=spaced+value',
+    },
+    {
+      input: '/',
+      query: { str: '&', str2: '%26' },
+      out: '/?str=%26&str2=%2526',
+    },
+    {
+      input: '/?x=1,2,3',
+      query: { y: '1,2,3' },
+      out: '/?x=1%2C2%2C3&y=1%2C2%2C3',
+    },
     // Arrays append one entry per item, and an empty array is skipped
-    { input: '/', query: { param: ['3', ''] }, out: '/?param=3&param=' },
-    { input: '/', query: { 'a': 'X', 'b[]': [], 'c': 'Y' }, out: '/?a=X&c=Y' },
+    {
+      input: '/',
+      query: {
+        param: ['3', ''],
+      },
+      out: '/?param=3&param=',
+    },
+    {
+      input: '/',
+      query: { 'a': 'X', 'b[]': [], 'c': 'Y' },
+      out: '/?a=X&c=Y',
+    },
     // The fragment stays at the end and never becomes part of the query.
-    { input: '/foo#bar', query: { page: 2 }, out: '/foo?page=2#bar' },
-    { input: '/foo?a=1#bar', query: { page: 2 }, out: '/foo?a=1&page=2#bar' },
-    { input: '/foo?a=1#bar', query: { a: undefined }, out: '/foo#bar' },
-    { input: '/foo#a?b', query: { x: 1 }, out: '/foo?x=1#a?b' },
-    { input: 'https://a.com/p?v=1#frag', query: { x: 2 }, out: 'https://a.com/p?v=1&x=2#frag' },
-    { input: '/foo#', query: { x: 1 }, out: '/foo?x=1#' },
+    {
+      input: '/foo#bar',
+      query: { page: 2 },
+      out: '/foo?page=2#bar',
+    },
+    {
+      input: '/foo?a=1#bar',
+      query: { page: 2 },
+      out: '/foo?a=1&page=2#bar',
+    },
+    {
+      input: '/foo?a=1#bar',
+      query: { a: undefined },
+      out: '/foo#bar',
+    },
+    {
+      input: '/foo#a?b',
+      query: { x: 1 },
+      out: '/foo?x=1#a?b',
+    },
+    {
+      input: 'https://a.com/p?v=1#frag',
+      query: { x: 2 },
+      out: 'https://a.com/p?v=1&x=2#frag',
+    },
+    {
+      input: '/foo#',
+      query: { x: 1 },
+      out: '/foo?x=1#',
+    },
   ])('converts $input with $query to $out', ({ input, query, out }) => {
     expect(withQuery(input, query)).toBe(out)
   })
@@ -265,7 +377,14 @@ describe('withQuery', () => {
   })
 
   it('encodes an object value as JSON', () => {
-    expect(withQuery('/', { param: { a: [{ obj: 1 }, { obj: 2 }] } }))
+    expect(withQuery('/', {
+      param: {
+        a: [
+          { obj: 1 },
+          { obj: 2 },
+        ],
+      },
+    }))
       .toBe('/?param=%7B%22a%22%3A%5B%7B%22obj%22%3A1%7D%2C%7B%22obj%22%3A2%7D%5D%7D')
   })
 })
@@ -274,16 +393,47 @@ describe('getQuery', () => {
   it.each<{ input: string, out: ParsedQuery }>([
     { input: '/foo', out: {} },
     { input: '/foo?', out: {} },
-    { input: '/foo?a=1', out: { a: '1' } },
-    { input: '/foo?a=1&b=2', out: { a: '1', b: '2' } },
-    { input: '/foo?a', out: { a: '' } },
-    { input: '/foo?a=1&a=2', out: { a: ['1', '2'] } },
-    { input: '/foo?a=1&a=2&a=3', out: { a: ['1', '2', '3'] } },
-    { input: '/foo?a=1#bar', out: { a: '1' } },
+    {
+      input: '/foo?a=1',
+      out: { a: '1' },
+    },
+    {
+      input: '/foo?a=1&b=2',
+      out: { a: '1', b: '2' },
+    },
+    {
+      input: '/foo?a',
+      out: { a: '' },
+    },
+    {
+      input: '/foo?a=1&a=2',
+      out: {
+        a: ['1', '2'],
+      },
+    },
+    {
+      input: '/foo?a=1&a=2&a=3',
+      out: {
+        a: ['1', '2', '3'],
+      },
+    },
+    {
+      input: '/foo?a=1#bar',
+      out: { a: '1' },
+    },
     { input: '/foo#bar?a=1', out: {} },
-    { input: '/foo?email=some+email.com', out: { email: 'some email.com' } },
-    { input: '/foo?str=%26', out: { str: '&' } },
-    { input: 'https://a.com/p?v=1#frag', out: { v: '1' } },
+    {
+      input: '/foo?email=some+email.com',
+      out: { email: 'some email.com' },
+    },
+    {
+      input: '/foo?str=%26',
+      out: { str: '&' },
+    },
+    {
+      input: 'https://a.com/p?v=1#frag',
+      out: { v: '1' },
+    },
   ])('parses the query of $input as $out', ({ input, out }) => {
     expect(getQuery(input)).toEqual(out)
   })
@@ -299,7 +449,13 @@ describe('getQuery', () => {
   })
 
   it('round-trips the parameters written by withQuery', () => {
-    const url = withQuery('/foo#frag', { page: 2, tags: ['a', 'b'] })
-    expect(getQuery(url)).toEqual({ page: '2', tags: ['a', 'b'] })
+    const url = withQuery('/foo#frag', {
+      page: 2,
+      tags: ['a', 'b'],
+    })
+    expect(getQuery(url)).toEqual({
+      page: '2',
+      tags: ['a', 'b'],
+    })
   })
 })

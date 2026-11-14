@@ -22,7 +22,9 @@ export class ArgumentError extends CliError {}
 
 /** Reports a failure the way the boundary does, for one that outlives `run`, such as a watch rebuild. */
 export function reportFailure(error: unknown, { verbose = false, expectedErrors = [], describe }: ReportOptions = {}): void {
-  const message = error instanceof Error ? describe?.(error) ?? error.message : String(error)
+  const message = error instanceof Error
+    ? describe?.(error) ?? error.message
+    : String(error)
   const sections = [message]
 
   // A cause often says why an expected failure happened, as `fetch failed` under a cache error.
@@ -59,7 +61,9 @@ function formatCauseChain(error: unknown, message: string): string {
   const causeLines: string[] = []
   const seen = new Set<unknown>([error])
   let printedText = message
-  let current: unknown = error instanceof Error ? error.cause : undefined
+  let current: unknown = error instanceof Error
+    ? error.cause
+    : undefined
 
   while (current instanceof Error && !seen.has(current)) {
     seen.add(current)

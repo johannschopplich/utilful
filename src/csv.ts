@@ -375,7 +375,9 @@ class CSVParserCore<Header extends string> {
   private consume(text: string): void {
     for (let i = 0; i < text.length; i++) {
       const character = text[i]
-      const nextCharacter = i + 1 < text.length ? text[i + 1] : ''
+      const nextCharacter = i + 1 < text.length
+        ? text[i + 1]
+        : ''
 
       // Skip whitespace after a closing quote until the delimiter or newline, unless the whitespace character is itself the delimiter.
       if (this.isFieldQuoted && !this.inQuotes && character !== this.delimiter && (character === SPACE || character === TAB)) {
@@ -443,7 +445,9 @@ class CSVParserCore<Header extends string> {
 
   private processHeaderRow(headers: string[]): void {
     const emptyHeaderPositions = headers
-      .map((header, index) => (header.length === 0 ? index + 1 : -1))
+      .map((header, index) => (header.length === 0
+        ? index + 1
+        : -1))
       .filter(position => position > 0)
 
     if (emptyHeaderPositions.length > 0) {

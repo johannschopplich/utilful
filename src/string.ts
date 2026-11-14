@@ -27,8 +27,14 @@ export function template(
   fallback?: string | ((key: string) => string),
 ): string {
   return str.replace(TEMPLATE_PLACEHOLDER_RE, (_, key: string) => {
-    const value = Object.hasOwn(variables, key) ? variables[key] : undefined
-    return value != null ? String(value) : ((typeof fallback === 'function' ? fallback(key) : fallback) ?? key)
+    const value = Object.hasOwn(variables, key)
+      ? variables[key]
+      : undefined
+    return value != null
+      ? String(value)
+      : ((typeof fallback === 'function'
+          ? fallback(key)
+          : fallback) ?? key)
   })
 }
 

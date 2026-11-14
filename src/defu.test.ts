@@ -35,14 +35,22 @@ describe('defu', () => {
   })
 
   it('merges nested objects', () => {
-    const result = defu({ a: { b: 'c' } }, { a: { d: 'e' } })
+    const result = defu({
+      a: { b: 'c' },
+    }, {
+      a: { d: 'e' },
+    })
     expect(result).toEqual({
       a: { b: 'c', d: 'e' },
     })
   })
 
   it('concatenates arrays with the source values first', () => {
-    const result = defu({ array: ['a', 'b'] }, { array: ['c', 'd'] })
+    const result = defu({
+      array: ['a', 'b'],
+    }, {
+      array: ['c', 'd'],
+    })
     expect(result).toEqual({
       array: ['a', 'b', 'c', 'd'],
     })
@@ -51,13 +59,27 @@ describe('defu', () => {
   it('concatenates object items without merging them', () => {
     const sourceItem = { name: 'Name', age: 21 }
     const defaultItem = { name: 'Name', age: '42' }
-    const result = defu({ items: [sourceItem] }, { items: [defaultItem] })
-    expect(result).toEqual({ items: [sourceItem, defaultItem] })
+    const result = defu({
+      items: [sourceItem],
+    }, {
+      items: [defaultItem],
+    })
+    expect(result).toEqual({
+      items: [sourceItem, defaultItem],
+    })
   })
 
   it.each([
-    ['class instance', new Wrapper('a'), new Wrapper('b')],
-    ['Date', new Date('2020-01-01'), new Date('2020-01-02')],
+    [
+      'class instance',
+      new Wrapper('a'),
+      new Wrapper('b'),
+    ],
+    [
+      'Date',
+      new Date('2020-01-01'),
+      new Date('2020-01-02'),
+    ],
   ])('keeps a source %s instead of merging it', (_, source, defaults) => {
     const result = defu({ value: source }, { value: defaults })
     expect(result.value).toBe(source)
@@ -82,9 +104,21 @@ describe('defu', () => {
   })
 
   it('leaves the defaults unmodified', () => {
-    const defaults = { a: 'default', nested: { b: 'default' }, list: ['default'] }
-    defu({ a: 'source', nested: { b: 'source', c: 'source' }, list: ['source'] }, defaults)
-    expect(defaults).toEqual({ a: 'default', nested: { b: 'default' }, list: ['default'] })
+    const defaults = {
+      a: 'default',
+      nested: { b: 'default' },
+      list: ['default'],
+    }
+    defu({
+      a: 'source',
+      nested: { b: 'source', c: 'source' },
+      list: ['source'],
+    }, defaults)
+    expect(defaults).toEqual({
+      a: 'default',
+      nested: { b: 'default' },
+      list: ['default'],
+    })
   })
 
   it('lets earlier arguments win across multiple defaults', () => {
@@ -113,7 +147,11 @@ describe('defu', () => {
   })
 
   it('types default-only keys on a nested result', () => {
-    const result = defu({ a: { b: 'c' } }, { a: { d: 'e' } })
+    const result = defu({
+      a: { b: 'c' },
+    }, {
+      a: { d: 'e' },
+    })
     expectTypeOf(result.a.b).toEqualTypeOf<string>()
     expectTypeOf(result.a.d).toEqualTypeOf<string>()
   })
@@ -124,14 +162,28 @@ describe('defu', () => {
       value = 1
     }
 
-    const result = defu({ instance: new Branded() }, { instance: new Branded() })
+    const result = defu({
+      instance: new Branded(),
+    }, {
+      instance: new Branded(),
+    })
     expectTypeOf(result.instance).toEqualTypeOf<Branded>()
   })
 
   it('keeps the Date, RegExp, Set and Map types', () => {
     const result = defu(
-      { when: new Date(), pattern: /a/, ids: new Set<string>(), lookup: new Map<string, number>() },
-      { when: new Date(), pattern: /b/, ids: new Set<string>(), lookup: new Map<string, number>() },
+      {
+        when: new Date(),
+        pattern: /a/,
+        ids: new Set<string>(),
+        lookup: new Map<string, number>(),
+      },
+      {
+        when: new Date(),
+        pattern: /b/,
+        ids: new Set<string>(),
+        lookup: new Map<string, number>(),
+      },
     )
 
     expectTypeOf(result.when).toEqualTypeOf<Date>()
@@ -174,7 +226,10 @@ describe('defu', () => {
     }
 
     const overrides: ServiceOptions = { retries: 3 }
-    const defaults: ServiceOptions = { retries: 1, nested: { depth: 2 } }
+    const defaults: ServiceOptions = {
+      retries: 1,
+      nested: { depth: 2 },
+    }
 
     expectTypeOf(defu(overrides, defaults)).toExtend<ServiceOptions>()
   })
@@ -194,16 +249,35 @@ describe('createDefu', () => {
   it('passes the dotted namespace to merger', () => {
     const defuWithNamespace = createDefu((target, key, value, namespace) => {
       if (key === 'modules') {
-        target[key] = `${namespace}:${[...value, ...target[key]].sort().join(',')}`
+        target[key] = `${namespace}:${[
+          ...value,
+          ...target[key],
+        ].sort().join(',')}`
         return true
       }
     })
 
-    const source = { modules: ['A'], foo: { bar: { modules: ['X'] } } }
-    const defaults = { modules: ['B'], foo: { bar: { modules: ['Y'] } } }
+    const source = {
+      modules: ['A'],
+      foo: {
+        bar: {
+          modules: ['X'],
+        },
+      },
+    }
+    const defaults = {
+      modules: ['B'],
+      foo: {
+        bar: {
+          modules: ['Y'],
+        },
+      },
+    }
     expect(defuWithNamespace(source, defaults)).toEqual({
       modules: ':A,B',
-      foo: { bar: { modules: 'foo.bar:X,Y' } },
+      foo: {
+        bar: { modules: 'foo.bar:X,Y' },
+      },
     })
   })
 })

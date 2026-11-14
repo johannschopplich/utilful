@@ -34,12 +34,18 @@ describe('err', () => {
 
 describe('ok property', () => {
   it('filtering on ok narrows a Result array to Ok', () => {
-    const results = [ok(1), err('fail')] as Result<number, string>[]
+    const results = [
+      ok(1),
+      err('fail'),
+    ] as Result<number, string>[]
     expectTypeOf(results.filter(result => result.ok)).toEqualTypeOf<Ok<number, string>[]>()
   })
 
   it('filtering on !ok narrows a Result array to Err', () => {
-    const results = [ok(1), err('fail')] as Result<number, string>[]
+    const results = [
+      ok(1),
+      err('fail'),
+    ] as Result<number, string>[]
     expectTypeOf(results.filter(result => !result.ok)).toEqualTypeOf<Err<number, string>[]>()
   })
 })
@@ -97,7 +103,9 @@ describe('andThen', () => {
   })
 
   it('infers the error type from the callback', () => {
-    const result = ok(1).andThen(x => x > 0 ? ok(x) : err('negative'))
+    const result = ok(1).andThen(x => x > 0
+      ? ok(x)
+      : err('negative'))
     expectTypeOf(result).toEqualTypeOf<Result<number, 'negative'>>()
   })
 })

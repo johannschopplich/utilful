@@ -45,9 +45,13 @@ const DEFAULT_QUALITY = 0.85
 export async function toReducedBlob(blob: Blob, options: ReducedBlobOptions = {}): Promise<Blob> {
   const { maxDimension, type, quality, stripMetadata = false } = options
 
-  const outputType = type ?? (isReducedBlobType(blob.type) ? blob.type : 'image/jpeg')
+  const outputType = type ?? (isReducedBlobType(blob.type)
+    ? blob.type
+    : 'image/jpeg')
   // An untyped blob counts as no type change, since only decoding tells its format.
-  const isTypeChange = type !== undefined ? type !== blob.type : blob.type !== '' && !isReducedBlobType(blob.type)
+  const isTypeChange = type !== undefined
+    ? type !== blob.type
+    : blob.type !== '' && !isReducedBlobType(blob.type)
   const shouldReencode = isTypeChange || (quality !== undefined && outputType !== 'image/png') || stripMetadata
 
   if (!maxDimension && !shouldReencode)

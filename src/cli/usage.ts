@@ -29,34 +29,60 @@ export function renderUsage<T extends ArgsDef>(command: CommandDef<T>, { command
     const hasDefault = definition.type !== 'positional' && definition.default !== undefined && definition.default !== false
     const hints = [
       definition.description,
-      isRequired ? color('gray', '(Required)') : undefined,
-      hasDefault ? color('gray', `(Default: ${definition.default})`) : undefined,
+      isRequired
+        ? color('gray', '(Required)')
+        : undefined,
+      hasDefault
+        ? color('gray', `(Default: ${definition.default})`)
+        : undefined,
     ].filter(hint => hint !== undefined).join(' ')
 
     if (definition.type === 'positional') {
       const label = name.toUpperCase()
-      positionalLines.push([color('cyan', label), hints])
-      usageLine.push(isRequired ? `<${label}>` : `[${label}]`)
+      positionalLines.push([
+        color('cyan', label),
+        hints,
+      ])
+      usageLine.push(isRequired
+        ? `<${label}>`
+        : `[${label}]`)
       continue
     }
 
-    const spellings = [definition.alias === undefined ? undefined : `-${definition.alias}`, `--${name}`]
+    const spellings = [
+      definition.alias === undefined
+        ? undefined
+        : `-${definition.alias}`,
+      `--${name}`,
+    ]
       .filter(spelling => spelling !== undefined)
       .join(', ')
     const value = definition.type === 'boolean'
       ? undefined
-      : `<${definition.valueHint ?? (definition.type === 'enum' ? definition.options.join('|') : name)}>`
-    optionLines.push([color('cyan', spellings) + (value === undefined ? '' : color('dim', `=${value}`)), hints])
+      : `<${definition.valueHint ?? (definition.type === 'enum'
+        ? definition.options.join('|')
+        : name)}>`
+    optionLines.push([color('cyan', spellings) + (value === undefined
+      ? ''
+      : color('dim', `=${value}`)), hints])
 
-    if (definition.type === 'boolean' && definition.default === true)
-      optionLines.push([color('cyan', `--no-${name}`), ''])
+    if (definition.type === 'boolean' && definition.default === true) {
+      optionLines.push([
+        color('cyan', `--no-${name}`),
+        '',
+      ])
+    }
 
     if (isRequired)
       usageLine.push(`--${name}=${value}`)
   }
 
-  for (const [name, subCommand] of Object.entries(command.subCommands ?? {}))
-    commandLines.push([color('cyan', name), subCommand.meta?.description ?? ''])
+  for (const [name, subCommand] of Object.entries(command.subCommands ?? {})) {
+    commandLines.push([
+      color('cyan', name),
+      subCommand.meta?.description ?? '',
+    ])
+  }
 
   const hasArguments = positionalLines.length > 0 || optionLines.length > 0
 
@@ -66,14 +92,26 @@ export function renderUsage<T extends ArgsDef>(command: CommandDef<T>, { command
     usageLine.push(Object.keys(command.subCommands!).join('|'))
 
   const lines: string[] = [
-    color('bold', version === undefined ? commandName : `${commandName} v${version}`),
-    ...meta.description === undefined ? [] : [meta.description],
+    color('bold', version === undefined
+      ? commandName
+      : `${commandName} v${version}`),
+    ...meta.description === undefined
+      ? []
+      : [meta.description],
     '',
-    `${heading('USAGE')}  ${color('cyan', [commandName, hasArguments ? '[OPTIONS]' : undefined, ...usageLine].filter(part => part !== undefined).join(' '))}`,
+    `${heading('USAGE')}  ${color('cyan', [
+      commandName,
+      hasArguments ? '[OPTIONS]' : undefined,
+      ...usageLine,
+    ].filter(part => part !== undefined).join(' '))}`,
     '',
   ]
 
-  for (const [title, rows] of [['ARGUMENTS', positionalLines], ['OPTIONS', optionLines], ['COMMANDS', commandLines]] as const) {
+  for (const [title, rows] of [
+    ['ARGUMENTS', positionalLines],
+    ['OPTIONS', optionLines],
+    ['COMMANDS', commandLines],
+  ] as const) {
     if (rows.length > 0)
       lines.push(heading(title), '', formatColumns(rows), '')
   }

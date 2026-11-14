@@ -24,7 +24,11 @@ describe('escapeCSVValue', () => {
     ['a boolean', true, 'true'],
     ['a bigint', 9007199254740993n, '9007199254740993'],
     // An invalid `Date` is the one date whose string form is the same in every time zone.
-    ['an invalid Date', new Date(Number.NaN), 'Invalid Date'],
+    [
+      'an invalid Date',
+      new Date(Number.NaN),
+      'Invalid Date',
+    ],
   ])('coerces %s to a string without quoting', (_label, value, expected) => {
     expect(escapeCSVValue(value)).toBe(expected)
   })
@@ -35,12 +39,42 @@ describe('escapeCSVValue', () => {
   })
 
   it.each([
-    ['a comma delimiter', { delimiter: ',' }, 'hello, world', '"hello, world"'],
-    ['a semicolon delimiter', { delimiter: ';' }, 'hello; world', '"hello; world"'],
-    ['quotes', {}, 'multiple "quotes" here "too"', '"multiple ""quotes"" here ""too"""'],
-    ['an LF line break', {}, 'contains\nnewline', '"contains\nnewline"'],
-    ['a CR line break', {}, 'contains\rnewline', '"contains\rnewline"'],
-    ['a delimiter, quotes, and a line break', {}, 'x,"y",z\nmore', '"x,""y"",z\nmore"'],
+    [
+      'a comma delimiter',
+      { delimiter: ',' },
+      'hello, world',
+      '"hello, world"',
+    ],
+    [
+      'a semicolon delimiter',
+      { delimiter: ';' },
+      'hello; world',
+      '"hello; world"',
+    ],
+    [
+      'quotes',
+      {},
+      'multiple "quotes" here "too"',
+      '"multiple ""quotes"" here ""too"""',
+    ],
+    [
+      'an LF line break',
+      {},
+      'contains\nnewline',
+      '"contains\nnewline"',
+    ],
+    [
+      'a CR line break',
+      {},
+      'contains\rnewline',
+      '"contains\rnewline"',
+    ],
+    [
+      'a delimiter, quotes, and a line break',
+      {},
+      'x,"y",z\nmore',
+      '"x,""y"",z\nmore"',
+    ],
   ])('quotes a value containing %s', (_label, options, input, expected) => {
     expect(escapeCSVValue(input, options)).toBe(expected)
   })
@@ -69,7 +103,9 @@ describe('createCSV', () => {
   })
 
   it('throws RangeError for an empty delimiter without columns', () => {
-    expect(() => createCSV([{ a: 1 }], [], { delimiter: '' })).toThrow(RangeError)
+    expect(() => createCSV([
+      { a: 1 },
+    ], [], { delimiter: '' })).toThrow(RangeError)
   })
 
   it('writes a header row by default', () => {
@@ -107,7 +143,9 @@ describe('createCSV', () => {
   })
 
   it('returns an empty string for an empty column list', () => {
-    expect(createCSV([{ a: 1 }], [])).toBe('')
+    expect(createCSV([
+      { a: 1 },
+    ], [])).toBe('')
   })
 
   it('writes undefined, null, empty, and missing values as empty fields', () => {
@@ -123,14 +161,21 @@ describe('createCSV', () => {
 
   it('omits properties not listed in columns', () => {
     const data = [
-      { name: 'John', age: '30', city: 'NYC', extra: 'ignore-me' },
+      {
+        name: 'John',
+        age: '30',
+        city: 'NYC',
+        extra: 'ignore-me',
+      },
     ]
     const result = createCSV(data, ['name', 'age'])
     expect(result).toBe('name,age\nJohn,30')
   })
 
   it('quotes column names containing a delimiter or quote', () => {
-    const data = [{ 'na,me': 'John', 'a"ge': '30' }]
+    const data = [
+      { 'na,me': 'John', 'a"ge': '30' },
+    ]
     const result = createCSV(data, ['na,me', 'a"ge'])
     expect(result).toBe('"na,me","a""ge"\nJohn,30')
   })
@@ -206,7 +251,9 @@ describe('parseCSV', () => {
   })
 
   it('keeps non-ASCII characters in unquoted values', () => {
-    expect(parseCSV('emoji,word\n😀,café')).toEqual([{ emoji: '😀', word: 'café' }])
+    expect(parseCSV('emoji,word\n😀,café')).toEqual([
+      { emoji: '😀', word: 'café' },
+    ])
   })
 
   it('parses a quoted value containing a delimiter', () => {
@@ -396,7 +443,9 @@ describe('parseCSV', () => {
 
   it('keeps a whitespace-only row by default', () => {
     const csv = 'name\n   '
-    expect(parseCSV(csv)).toEqual([{ name: '   ' }])
+    expect(parseCSV(csv)).toEqual([
+      { name: '   ' },
+    ])
   })
 
   it('skips whitespace-only rows with trim', () => {
@@ -475,14 +524,19 @@ describe('parseCSVStream', () => {
 
   it('unescapes a quote pair split across chunks', async () => {
     const chunks = ['a\n"x"', '"y"']
-    expect(await collect(parseCSVStream(chunks))).toEqual([{ a: 'x"y' }])
+    expect(await collect(parseCSVStream(chunks))).toEqual([
+      { a: 'x"y' },
+    ])
   })
 
   it('yields the same rows at every chunk split point', async () => {
     const csv = 'name,note\r\n"John ""JJ""","line1\nline2"\r\nJane, plain '
 
     for (let splitIndex = 1; splitIndex < csv.length; splitIndex++) {
-      const chunks = [csv.slice(0, splitIndex), csv.slice(splitIndex)]
+      const chunks = [
+        csv.slice(0, splitIndex),
+        csv.slice(splitIndex),
+      ]
       expect(await collect(parseCSVStream(chunks))).toEqual([
         { name: 'John "JJ"', note: 'line1\nline2' },
         { name: 'Jane', note: ' plain ' },
@@ -492,7 +546,9 @@ describe('parseCSVStream', () => {
 
   it('strips a leading byte order mark from the first chunk', async () => {
     const chunks = ['\uFEFFname,age\nJo', 'hn,30']
-    expect(await collect(parseCSVStream(chunks))).toEqual([{ name: 'John', age: '30' }])
+    expect(await collect(parseCSVStream(chunks))).toEqual([
+      { name: 'John', age: '30' },
+    ])
   })
 
   it('reports row 3 for an extra field after CRLF pairs split across chunks', async () => {
@@ -538,7 +594,9 @@ describe('round-trip', () => {
   })
 
   it('round-trips values with leading and trailing whitespace', () => {
-    const data = [{ value: '  padded  ' }]
+    const data = [
+      { value: '  padded  ' },
+    ]
     expect(parseCSV(createCSV(data, ['value']))).toEqual(data)
   })
 
@@ -548,7 +606,11 @@ describe('round-trip', () => {
       { name: 'Jane', note: 'He said "Hi"' },
     ]
     const csv = (await collect(createCSVStream(data, ['name', 'note']))).join('')
-    const chunks = [csv.slice(0, 15), csv.slice(15, 40), csv.slice(40)]
+    const chunks = [
+      csv.slice(0, 15),
+      csv.slice(15, 40),
+      csv.slice(40),
+    ]
     expect(await collect(parseCSVStream(chunks))).toEqual(data)
   })
 })

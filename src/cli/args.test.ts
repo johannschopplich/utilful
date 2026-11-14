@@ -41,7 +41,10 @@ describe('parseArgs', () => {
   })
 
   it('turns a boolean off with --no-watch', () => {
-    const args = parseArgs(['src/index.js', '--no-watch'], { ...buildArgs, watch: { type: 'boolean', default: true } })
+    const args = parseArgs(['src/index.js', '--no-watch'], {
+      ...buildArgs,
+      watch: { type: 'boolean', default: true },
+    })
 
     expect(args.watch).toBe(false)
   })
@@ -51,7 +54,11 @@ describe('parseArgs', () => {
   })
 
   it('reads -3 and -1 as the values of --start and -e', () => {
-    const args = parseArgs(['x', '--start', '-3', '-e', '-1'], { ...buildArgs, start: { type: 'string' }, end: { type: 'string', alias: 'e' } })
+    const args = parseArgs(['x', '--start', '-3', '-e', '-1'], {
+      ...buildArgs,
+      start: { type: 'string' },
+      end: { type: 'string', alias: 'e' },
+    })
 
     expect(args).toMatchObject({ start: '-3', end: '-1' })
   })
@@ -69,7 +76,9 @@ describe('parseArgs', () => {
   })
 
   it('rejects a missing required --token', () => {
-    expect(() => parseArgs([], { token: { type: 'string', required: true } })).toThrow('Missing required argument: --token')
+    expect(() => parseArgs([], {
+      token: { type: 'string', required: true },
+    })).toThrow('Missing required argument: --token')
   })
 
   it('rejects b.js as an extra positional', () => {
@@ -85,8 +94,16 @@ describe('parseArgs', () => {
 
 describe('enum', () => {
   const engineArgs = {
-    engine: { type: 'enum', options: ['2k', '2k3'], alias: 'e' },
-    format: { type: 'enum', options: ['json', 'text'], default: 'text' },
+    engine: {
+      type: 'enum',
+      options: ['2k', '2k3'],
+      alias: 'e',
+    },
+    format: {
+      type: 'enum',
+      options: ['json', 'text'],
+      default: 'text',
+    },
   } as const
 
   it('binds -e 2k3 and defaults --format to text', () => {
@@ -101,10 +118,21 @@ describe('enum', () => {
   })
 
   it('types an enum declared inline as the union of its options', () => {
-    expectTypeOf(parseArgs([], { format: { type: 'enum', options: ['json', 'text'], default: 'text' } }).format).toEqualTypeOf<'json' | 'text'>()
+    expectTypeOf(parseArgs([], {
+      format: {
+        type: 'enum',
+        options: ['json', 'text'],
+        default: 'text',
+      },
+    }).format).toEqualTypeOf<'json' | 'text'>()
 
     defineCommand({
-      args: { format: { type: 'enum', options: ['json', 'text'] } },
+      args: {
+        format: {
+          type: 'enum',
+          options: ['json', 'text'],
+        },
+      },
       run({ args }) {
         expectTypeOf(args.format).toEqualTypeOf<'json' | 'text' | undefined>()
       },
@@ -112,12 +140,18 @@ describe('enum', () => {
   })
 
   it('rejects a misspelled key of an argument definition', () => {
-    const typoArgs = { file: { type: 'positional', requird: true } } as const
+    const typoArgs = {
+      file: { type: 'positional', requird: true },
+    } as const
 
     // @ts-expect-error `requird` is no key of an argument definition.
     defineCommand({ args: typoArgs })
-    // @ts-expect-error `defualt` is no key of an argument definition.
-    defineCommand({ args: { out: { type: 'string', defualt: 'dist' } } })
+    defineCommand({
+      args: {
+        // @ts-expect-error `defualt` is no key of an argument definition.
+        out: { type: 'string', defualt: 'dist' },
+      },
+    })
   })
 
   it('rejects 3k with the options it could have been', () => {
@@ -128,13 +162,24 @@ describe('enum', () => {
   })
 
   it('rejects a default outside the options as a defect, not an ArgumentError', () => {
-    const parse = (): unknown => parseArgs([], { format: { type: 'enum', options: ['json'], default: 'yaml' } })
+    const parse = (): unknown => parseArgs([], {
+      format: {
+        type: 'enum',
+        options: ['json'],
+        default: 'yaml',
+      },
+    })
 
     expect(parse).toThrow('The default of --format, "yaml", is not one of: json')
     expect(parse).not.toThrow(ArgumentError)
   })
 
   it('reads -1 as the value of --level', () => {
-    expect(parseArgs(['--level', '-1'], { level: { type: 'enum', options: ['-1', '0'] } }).level).toBe('-1')
+    expect(parseArgs(['--level', '-1'], {
+      level: {
+        type: 'enum',
+        options: ['-1', '0'],
+      },
+    }).level).toBe('-1')
   })
 })

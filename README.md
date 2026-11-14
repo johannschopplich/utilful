@@ -70,8 +70,17 @@ import { CliError, defineCommand } from 'utilful/cli'
 
 const buildArgs = {
   'file': { type: 'positional', description: 'Entry file', required: true }, // string
-  'out-dir': { type: 'string', alias: 'd', description: 'Output directory', valueHint: 'path' }, // string | undefined
-  'format': { type: 'enum', options: ['esm', 'iife'], default: 'esm' }, // 'esm' | 'iife'
+  'out-dir': {
+    type: 'string',
+    alias: 'd',
+    description: 'Output directory',
+    valueHint: 'path'
+  }, // string | undefined
+  'format': {
+    type: 'enum',
+    options: ['esm', 'iife'],
+    default: 'esm'
+  }, // 'esm' | 'iife'
   'watch': { type: 'boolean', alias: 'w', description: 'Rebuild on change' }, // boolean, --no-watch turns it off
 } as const
 
@@ -97,7 +106,9 @@ const main = defineCommand({
   subCommands: { build },
 })
 
-void runMain(main, { expectedErrors: [MyLibraryError] }) // Reported like a `CliError`
+void runMain(main, {
+  expectedErrors: [MyLibraryError]
+}) // Reported like a `CliError`
 ```
 
 Also exported:
@@ -350,8 +361,15 @@ result.b // number – no cast needed
 import { defu } from 'utilful'
 
 const result = defu(
-  { a: 1, b: { x: 1 } },
-  { a: 2, b: { y: 2 }, c: 3 }
+  {
+    a: 1,
+    b: { x: 1 }
+  },
+  {
+    a: 2,
+    b: { y: 2 },
+    c: 3
+  }
 )
 // Result: { a: 1, b: { x: 1, y: 2 }, c: 3 }
 ```
@@ -655,7 +673,10 @@ declare function withQuery(input: string, query?: QueryObject): string
 **Example:**
 
 ```ts
-withQuery('/api/users', { page: 2, tags: ['a', 'b'] }) // '/api/users?page=2&tags=a&tags=b'
+withQuery('/api/users', {
+  page: 2,
+  tags: ['a', 'b']
+}) // '/api/users?page=2&tags=a&tags=b'
 withQuery('/api/users#list', { page: 2 }) // '/api/users?page=2#list'
 withQuery('/api/users?page=2', { page: undefined }) // '/api/users'
 ```
@@ -757,7 +778,9 @@ ok<number, string>(42).mapError(e => e.toUpperCase()) // Ok(42)
 Chains a function that returns a `Result`. Useful for composing fallible operations.
 
 ```ts
-ok(2).andThen(x => x > 0 ? ok(x) : err('negative')) // Ok(2)
+ok(2).andThen(x => x > 0
+  ? ok(x)
+  : err('negative')) // Ok(2)
 err('fail').andThen(x => ok(x * 2)) // Err('fail') – short-circuits
 ```
 

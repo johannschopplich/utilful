@@ -49,11 +49,15 @@ export function defineCommand<const T extends ArgsDef>(command: CommandDef<T> & 
  */
 export async function runMain<T extends ArgsDef>(command: CommandDef<T>, options: RunMainOptions = {}): Promise<void> {
   const argv = options.argv ?? process.argv.slice(2)
-  const beforeTerminator = argv.slice(0, argv.includes('--') ? argv.indexOf('--') : undefined)
+  const beforeTerminator = argv.slice(0, argv.includes('--')
+    ? argv.indexOf('--')
+    : undefined)
   const hasFlag = (flags: ReadonlySet<string>): boolean => beforeTerminator.some(argument => flags.has(argument))
 
   try {
-    const version = hasFlag(VERSION_FLAGS) ? nearestVersion(resolveCommand(command, argv).commands) : undefined
+    const version = hasFlag(VERSION_FLAGS)
+      ? nearestVersion(resolveCommand(command, argv).commands)
+      : undefined
 
     if (hasFlag(HELP_FLAGS))
       process.stdout.write(`${usageFor(command, argv, process.stdout)}\n`)
@@ -77,8 +81,11 @@ export async function runCommand<T extends ArgsDef>(command: CommandDef<T>, argv
   const { commands, firstOperand, rest } = resolveCommand(command, argv)
   const leaf = withRunnerArgs(commands.at(-1)!)
 
-  if (isDispatchOnly(leaf))
-    throw new ArgumentError(firstOperand === undefined ? 'Missing command' : `Unknown command: ${firstOperand}`)
+  if (isDispatchOnly(leaf)) {
+    throw new ArgumentError(firstOperand === undefined
+      ? 'Missing command'
+      : `Unknown command: ${firstOperand}`)
+  }
 
   const args = parseArgs(rest, leaf.args ?? {}, { allowExtraPositionals: leaf.allowExtraPositionals })
   await leaf.run?.({ args })
@@ -105,8 +112,14 @@ function resolveCommand(command: CommandDef<any>, argv: readonly string[]): { co
 
   while (true) {
     const found = findSubCommand(commands.at(-1)!, rest)
-    if (found.name === undefined)
-      return { commands, keys, firstOperand: found.firstOperand, rest }
+    if (found.name === undefined) {
+      return {
+        commands,
+        keys,
+        firstOperand: found.firstOperand,
+        rest,
+      }
+    }
 
     commands.push(commands.at(-1)!.subCommands![found.name]!)
     keys.push(found.name)
@@ -123,7 +136,10 @@ function withRunnerArgs(command: CommandDef<any>): CommandDef<any> {
   if (isDispatchOnly(command))
     return command
 
-  return { ...command, args: { ...command.args, verbose: command.args?.verbose ?? verboseArg } }
+  return {
+    ...command,
+    args: { ...command.args, verbose: command.args?.verbose ?? verboseArg },
+  }
 }
 
 /**
@@ -132,21 +148,40 @@ function withRunnerArgs(command: CommandDef<any>): CommandDef<any> {
  * value-taking option of every sub-command, since the command is still unknown.
  */
 function findSubCommand(command: CommandDef<any>, argv: readonly string[]): { name?: string, firstOperand?: string, rest: string[] } {
-  if (command.subCommands === undefined)
-    return { rest: [...argv] }
+  if (command.subCommands === undefined) {
+    return {
+      rest: [...argv],
+    }
+  }
 
   const options = Object.assign(
     toNodeOptions(command.args ?? {}),
     ...Object.values(command.subCommands).map(subCommand => toNodeOptions(subCommand.args ?? {})),
   )
-  const { tokens } = parseNodeArgs({ args: [...argv], options, strict: false, allowPositionals: true, tokens: true })
+  const { tokens } = parseNodeArgs({
+    args: [...argv],
+    options,
+    strict: false,
+    allowPositionals: true,
+    tokens: true,
+  })
   const firstOperand = tokens.find(token => token.kind === 'positional' || token.kind === 'option-terminator')
 
-  if (firstOperand?.kind !== 'positional')
-    return { rest: [...argv] }
+  if (firstOperand?.kind !== 'positional') {
+    return {
+      rest: [...argv],
+    }
+  }
 
-  if (Object.hasOwn(command.subCommands, firstOperand.value))
-    return { name: firstOperand.value, rest: argv.toSpliced(firstOperand.index, 1) }
+  if (Object.hasOwn(command.subCommands, firstOperand.value)) {
+    return {
+      name: firstOperand.value,
+      rest: argv.toSpliced(firstOperand.index, 1),
+    }
+  }
 
-  return { firstOperand: firstOperand.value, rest: [...argv] }
+  return {
+    firstOperand: firstOperand.value,
+    rest: [...argv],
+  }
 }

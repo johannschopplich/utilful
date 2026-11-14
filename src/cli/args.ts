@@ -130,7 +130,11 @@ export function toNodeOptions(argsDef: ArgsDef): Record<string, ParseArgsOptionD
     if (definition.type === 'positional')
       continue
 
-    const option: ParseArgsOptionDescriptor = { type: definition.type === 'boolean' ? 'boolean' : 'string' }
+    const option: ParseArgsOptionDescriptor = {
+      type: definition.type === 'boolean'
+        ? 'boolean'
+        : 'string',
+    }
     if (definition.alias !== undefined)
       option.short = definition.alias
     if (definition.default !== undefined)

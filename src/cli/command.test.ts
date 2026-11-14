@@ -36,7 +36,9 @@ const mainCommand = defineCommand({
 
 const countCommand = defineCommand({
   meta: { name: 'count' },
-  args: { file: { type: 'positional', required: true } },
+  args: {
+    file: { type: 'positional', required: true },
+  },
   allowExtraPositionals: true,
   subCommands: { build: buildCommand },
   run({ args }) {
@@ -46,7 +48,9 @@ const countCommand = defineCommand({
 
 const { runCli } = createCliHarness(mainCommand, {
   expectedErrors: [ProbeError],
-  describe: error => error instanceof ProbeError ? `Probe: ${error.message}` : undefined,
+  describe: error => error instanceof ProbeError
+    ? `Probe: ${error.message}`
+    : undefined,
 })
 
 const { runCli: runCountCli } = createCliHarness(countCommand)
@@ -122,7 +126,9 @@ describe('error reporting', () => {
   })
 
   it('names each cause of a CliError without its stack', async () => {
-    const cause = new Error('permission denied', { cause: new RangeError('mode out of range') })
+    const cause = new Error('permission denied', {
+      cause: new RangeError('mode out of range'),
+    })
     const { stderr } = await reportFor(new CliError('Cannot read the input', { cause }))
 
     expect(stderr).toContain('Cannot read the input\n\nCaused by: Error: permission denied\nCaused by: RangeError: mode out of range')
@@ -130,10 +136,18 @@ describe('error reporting', () => {
   })
 
   it.each([
-    ['repeats', (message: string) => message],
-    ['quotes', (message: string) => `Cannot parse the options: ${message}`],
+    [
+      'repeats',
+      (message: string) => message,
+    ],
+    [
+      'quotes',
+      (message: string) => `Cannot parse the options: ${message}`,
+    ],
   ])('leaves out a cause whose message the printed message %s', async (_, wrap) => {
-    const cause = new TypeError('Invalid delimiter "x"', { cause: new Error('not one of , | \\t') })
+    const cause = new TypeError('Invalid delimiter "x"', {
+      cause: new Error('not one of , | \\t'),
+    })
     const { stderr } = await reportFor(new CliError(wrap(cause.message), { cause }))
 
     expect(stderr.match(/Invalid delimiter/g)).toHaveLength(1)
@@ -142,7 +156,9 @@ describe('error reporting', () => {
 
   it('leaves out a cause whose message a printed cause quotes', async () => {
     const cause = new Error('[POST] "https://api.example.com": <no response> fetch failed', {
-      cause: new TypeError('fetch failed', { cause: new Error('connect ECONNREFUSED') }),
+      cause: new TypeError('fetch failed', {
+        cause: new Error('connect ECONNREFUSED'),
+      }),
     })
     const { stderr } = await reportFor(new CliError('Cannot create the cache', { cause }))
 
@@ -150,7 +166,9 @@ describe('error reporting', () => {
   })
 
   it('names a cause without a message by its name', async () => {
-    const { stderr } = await reportFor(new CliError('Cannot read the input', { cause: new DOMException('', 'AbortError') }))
+    const { stderr } = await reportFor(new CliError('Cannot read the input', {
+      cause: new DOMException('', 'AbortError'),
+    }))
 
     expect(stderr).toMatch(/Caused by: AbortError$/m)
   })
@@ -219,7 +237,12 @@ describe('version', () => {
   it('writes the version of the nearest command that declares one', async () => {
     const { runCli: runPluginCli } = createCliHarness(defineCommand({
       meta: { version: '1.2.3' },
-      subCommands: { plugin: defineCommand({ meta: { version: '2.0.0' }, run() {} }) },
+      subCommands: {
+        plugin: defineCommand({
+          meta: { version: '2.0.0' },
+          run() {},
+        }),
+      },
     }))
 
     const { stdout } = await runPluginCli(['plugin', '--version'])

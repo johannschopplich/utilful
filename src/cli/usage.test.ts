@@ -7,12 +7,31 @@ const buildCommand = defineCommand({
   meta: { name: 'build', description: 'Build the entry file' },
   args: {
     'file': { type: 'positional', description: 'The entry file', required: true },
-    'out-dir': { type: 'string', alias: 'd', description: 'Output directory', default: 'dist' },
+    'out-dir': {
+      type: 'string',
+      alias: 'd',
+      description: 'Output directory',
+      default: 'dist',
+    },
     'watch': { type: 'boolean', description: 'Rebuild on change', default: true },
     'json': { type: 'boolean', description: 'Print JSON', default: false },
-    'token': { type: 'string', description: 'API token', required: true, valueHint: 'secret' },
-    'format': { type: 'enum', options: ['esm', 'iife'], description: 'Bundle format' },
-    'target': { type: 'enum', options: ['node', 'browser'], description: 'Runtime', valueHint: 'platform' },
+    'token': {
+      type: 'string',
+      description: 'API token',
+      required: true,
+      valueHint: 'secret',
+    },
+    'format': {
+      type: 'enum',
+      options: ['esm', 'iife'],
+      description: 'Bundle format',
+    },
+    'target': {
+      type: 'enum',
+      options: ['node', 'browser'],
+      description: 'Runtime',
+      valueHint: 'platform',
+    },
   },
 })
 
@@ -21,7 +40,9 @@ const checkCommand = defineCommand({
   subCommands: {
     covers: defineCommand({
       meta: { description: 'Check the covers' },
-      args: { sample: { type: 'string', description: 'Pairs to judge' } },
+      args: {
+        sample: { type: 'string', description: 'Pairs to judge' },
+      },
     }),
   },
 })
@@ -114,14 +135,23 @@ describe('usage', () => {
   })
 
   it('lists --verbose once for a command that spreads commonArgs', async () => {
-    const { runCli: runSpreadCli } = createCliHarness(defineCommand({ meta: { name: 'spread' }, args: commonArgs, run() {} }))
+    const { runCli: runSpreadCli } = createCliHarness(defineCommand({
+      meta: { name: 'spread' },
+      args: commonArgs,
+      run() {},
+    }))
     const { stdout } = await runSpreadCli(['--help'])
 
     expect(stdout.match(/--verbose/g)).toHaveLength(1)
   })
 
   it('lists the --verbose a command declares in place of verboseArg', async () => {
-    const { runCli: runOwnCli } = createCliHarness(defineCommand({ args: { verbose: { type: 'boolean', description: 'Log every step' } }, run() {} }))
+    const { runCli: runOwnCli } = createCliHarness(defineCommand({
+      args: {
+        verbose: { type: 'boolean', description: 'Log every step' },
+      },
+      run() {},
+    }))
     const { stdout } = await runOwnCli(['--help'])
 
     expect(stdout).toMatch(/^ +--verbose +Log every step$/m)
@@ -142,9 +172,18 @@ describe('usage', () => {
 
 describe('usage of a nested command', () => {
   it.each([
-    [['catalog', '--help'], 'probe catalog check'],
-    [['catalog', 'check', '--help'], 'probe catalog check covers'],
-    [['catalog', 'check', 'covers', '--help'], 'probe catalog check covers \\[OPTIONS\\]'],
+    [
+      ['catalog', '--help'],
+      'probe catalog check',
+    ],
+    [
+      ['catalog', 'check', '--help'],
+      'probe catalog check covers',
+    ],
+    [
+      ['catalog', 'check', 'covers', '--help'],
+      'probe catalog check covers \\[OPTIONS\\]',
+    ],
   ])('names every command walked for %j', async (argv, usageLine) => {
     const { stdout } = await runCli(argv)
 
@@ -176,7 +215,12 @@ describe('usage of a nested command', () => {
   })
 
   it('prints the usage of catalog check covers after an unknown option', async () => {
-    const { stderr } = await runCli(['catalog', 'check', 'covers', '--bogus'])
+    const { stderr } = await runCli([
+      'catalog',
+      'check',
+      'covers',
+      '--bogus',
+    ])
 
     expect(stderr).toContain('Unknown option \'--bogus\'')
     expect(stderr).toMatch(/^USAGE {2}probe catalog check covers \[OPTIONS\]$/m)

@@ -21,7 +21,9 @@ function getAuthorityStart(path: string): number {
   if (path.startsWith('//'))
     return 2
 
-  return URL_SCHEME_RE.test(path) ? path.indexOf('://') + 3 : -1
+  return URL_SCHEME_RE.test(path)
+    ? path.indexOf('://') + 3
+    : -1
 }
 
 // #endregion
@@ -35,7 +37,9 @@ export function withoutLeadingSlash(path?: string): string {
   if (!path)
     return ''
 
-  return path[0] === '/' ? path.slice(1) : path
+  return path[0] === '/'
+    ? path.slice(1)
+    : path
 }
 
 /**
@@ -45,7 +49,9 @@ export function withLeadingSlash(path?: string): string {
   if (!path || path === '/')
     return '/'
 
-  return path[0] === '/' ? path : `/${path}`
+  return path[0] === '/'
+    ? path
+    : `/${path}`
 }
 
 /**
@@ -179,7 +185,9 @@ export function withoutBase(input = '', base = ''): string {
     return input
 
   const trimmed = input.slice(_base.length)
-  return trimmed[0] === '/' ? trimmed : `/${trimmed}`
+  return trimmed[0] === '/'
+    ? trimmed
+    : `/${trimmed}`
 }
 
 // #endregion
@@ -243,9 +251,13 @@ export function withQuery(input: string, query?: QueryObject): string {
   const searchIndex = beforeHash.indexOf('?')
   const hasExistingParams = searchIndex !== -1
 
-  const base = hasExistingParams ? beforeHash.slice(0, searchIndex) : beforeHash
+  const base = hasExistingParams
+    ? beforeHash.slice(0, searchIndex)
+    : beforeHash
   const searchParams = new URLSearchParams(
-    hasExistingParams ? beforeHash.slice(searchIndex + 1) : undefined,
+    hasExistingParams
+      ? beforeHash.slice(searchIndex + 1)
+      : undefined,
   )
 
   for (const [key, value] of Object.entries(query)) {
@@ -270,7 +282,9 @@ export function withQuery(input: string, query?: QueryObject): string {
   }
 
   const queryString = searchParams.toString()
-  return queryString ? `${base}?${queryString}${hash}` : base + hash
+  return queryString
+    ? `${base}?${queryString}${hash}`
+    : base + hash
 }
 
 /**
@@ -312,7 +326,10 @@ function splitFragment(input: string): { beforeHash: string, hash: string } {
 
   return hashIndex === -1
     ? { beforeHash: input, hash: '' }
-    : { beforeHash: input.slice(0, hashIndex), hash: input.slice(hashIndex) }
+    : {
+        beforeHash: input.slice(0, hashIndex),
+        hash: input.slice(hashIndex),
+      }
 }
 
 function normalizeQueryValue(value: QueryValue): string {
