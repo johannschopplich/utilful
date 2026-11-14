@@ -26,7 +26,7 @@ export interface RunOptions {
 }
 
 export interface CliHarnessOptions extends Omit<RunMainOptions, 'argv'> {
-  /** Only `runCliProcess` needs it. */
+  /** Only `runCliProcess` needs it. A relative path resolves against `process.cwd()` when the harness is created. */
   entry?: string
 }
 
@@ -46,6 +46,8 @@ class ProcessExitError extends Error {
 }
 
 export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { entry, ...runOptions }: CliHarnessOptions = {}): CliHarness {
+  const entryPath = entry === undefined ? undefined : path.resolve(entry)
+
   return {
     async runCli(argv, options = {}) {
       const stdout: string[] = []
@@ -104,13 +106,13 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
     },
 
     runCliProcess(argv, options = {}) {
-      if (entry === undefined)
+      if (entryPath === undefined)
         return Promise.reject(new Error('runCliProcess needs the entry file of the CLI'))
 
       return new Promise((resolve, reject) => {
         execFile(
           process.execPath,
-          [entry, ...argv],
+          [entryPath, ...argv],
           // A variable set to `undefined` never reaches the child.
           { cwd: options.cwd, env: { ...process.env, ...options.env }, maxBuffer: 64 * 1024 * 1024 },
           (spawnError, stdout, stderr) => {

@@ -65,6 +65,22 @@ describe('runCli', () => {
   })
 })
 
+describe('runCliProcess', () => {
+  const createDirectory = useTemporaryDirectories()
+
+  it('resolves a relative entry against process.cwd() at creation, not options.cwd', async () => {
+    const entry = path.relative(process.cwd(), path.join(createDirectory({ 'entry.mjs': 'console.log(\'ran\')' }), 'entry.mjs'))
+    const { runCliProcess } = createCliHarness(defineCommand({}), { entry })
+    // Deeper than `process.cwd()`, so the entry's `..` chain can't reach the root.
+    const nestedPath = 'nested/'.repeat(process.cwd().split(path.sep).length)
+    const runDirectory = path.join(createDirectory({ [`${nestedPath}.keep`]: '' }), nestedPath)
+
+    const { stdout } = await runCliProcess([], { cwd: runDirectory })
+
+    expect(stdout).toBe('ran\n')
+  })
+})
+
 describe('env', () => {
   const createDirectory = useTemporaryDirectories()
   const printEnv = defineCommand({
