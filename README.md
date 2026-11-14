@@ -58,7 +58,7 @@ declare function toArray<T>(array?: MaybeArray<T> | null | undefined): T[]
 
 ### CLI
 
-A command runner on top of Node's `util.parseArgs`: strict option parsing, sub-commands at any depth, `--help`, `--version` and `--verbose` on every command, and an error boundary that prints an expected error as its message and causes, and anything else with its stack as well. `--verbose` adds the stack to every failure but a wrong argument. `-h` and `-v` belong to the runner, so no option may take either letter as its alias.
+A command runner on top of Node's `util.parseArgs`: strict option parsing, sub-commands at any depth, `--help` and `--verbose` on every command, `--version` wherever a command up the tree declares `meta.version`, and an error boundary that prints an expected error as its message and causes, and anything else with its stack as well. `--verbose` adds the stack to every failure but a wrong argument. `-h` and `-v` belong to the runner, so no option may take either letter as its alias.
 
 #### `defineCommand`
 

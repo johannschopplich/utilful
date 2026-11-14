@@ -215,6 +215,23 @@ describe('version', () => {
 
     expect(stdout).toBe('1.2.3\n')
   })
+
+  it('writes the version of the nearest command that declares one', async () => {
+    const { runCli: runPluginCli } = createCliHarness(defineCommand({
+      meta: { version: '1.2.3' },
+      subCommands: { plugin: defineCommand({ meta: { version: '2.0.0' }, run() {} }) },
+    }))
+
+    const { stdout } = await runPluginCli(['plugin', '--version'])
+
+    expect(stdout).toBe('2.0.0\n')
+  })
+
+  it('rejects --version as an unknown option in a tree without a version', async () => {
+    const { stderr } = await runCountCli(['a.txt', '--version'])
+
+    expect(stderr).toContain('Unknown option \'--version\'')
+  })
 })
 
 describe('dispatch', () => {

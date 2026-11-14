@@ -53,10 +53,12 @@ export async function runMain<T extends ArgsDef>(command: CommandDef<T>, options
   const hasFlag = (flags: ReadonlySet<string>): boolean => beforeTerminator.some(argument => flags.has(argument))
 
   try {
+    const version = hasFlag(VERSION_FLAGS) ? nearestVersion(resolveCommand(command, argv).commands) : undefined
+
     if (hasFlag(HELP_FLAGS))
       process.stdout.write(`${usageFor(command, argv, process.stdout)}\n`)
-    else if (hasFlag(VERSION_FLAGS))
-      process.stdout.write(`${command.meta?.version ?? ''}\n`)
+    else if (version !== undefined)
+      process.stdout.write(`${version}\n`)
     else
       await runCommand(command, argv)
   }
@@ -87,9 +89,13 @@ function usageFor(command: CommandDef<any>, argv: readonly string[], stream: Nod
 
   return renderUsage(withRunnerArgs(commands.at(-1)!), {
     commandPath: [command.meta?.name, ...keys].filter(name => name !== undefined).join(' '),
-    version: commands.findLast(walked => walked.meta?.version !== undefined)?.meta?.version,
+    version: nearestVersion(commands),
     stream,
   })
+}
+
+function nearestVersion(commands: readonly CommandDef<any>[]): string | undefined {
+  return commands.findLast(walked => walked.meta?.version !== undefined)?.meta?.version
 }
 
 function resolveCommand(command: CommandDef<any>, argv: readonly string[]): { commands: CommandDef<any>[], keys: string[], firstOperand?: string, rest: string[] } {
