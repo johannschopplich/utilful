@@ -32,8 +32,15 @@ export function reportFailure(error: unknown, { verbose = false, expectedErrors 
   if (causeChain)
     sections.push(causeChain)
 
-  if ((verbose || !isExpected(error, expectedErrors)) && error instanceof Error && error.stack)
-    sections.push(error.stack)
+  if ((verbose || !isExpected(error, expectedErrors)) && error instanceof Error) {
+    if (error.stack)
+      sections.push(error.stack)
+    // A wrapper's stack ends where it wrapped, so the causes' stacks show where the failure began.
+    for (const cause of collectCauses(error)) {
+      if (cause.stack)
+        sections.push(`Caused by: ${cause.stack}`)
+    }
+  }
 
   log.error(sections.join('\n\n'))
   // `process.exit` would discard whatever stdout has still buffered, truncating
@@ -59,25 +66,35 @@ function isExpected(error: unknown, expectedErrors: readonly ErrorClass[]): bool
 
 function formatCauseChain(error: unknown, message: string): string {
   const causeLines: string[] = []
-  const seen = new Set<unknown>([error])
   let printedText = message
+
+  for (const cause of collectCauses(error)) {
+    const name = cause.name || 'Error'
+    if (!cause.message) {
+      causeLines.push(`Caused by: ${name}`)
+    }
+    // A wrapper that copies or quotes the message of its cause would otherwise print it twice.
+    else if (!printedText.includes(cause.message)) {
+      causeLines.push(`Caused by: ${name}: ${cause.message}`)
+      printedText += `\n${cause.message}`
+    }
+  }
+
+  return causeLines.join('\n')
+}
+
+function collectCauses(error: unknown): Error[] {
+  const causes: Error[] = []
+  const seen = new Set<unknown>([error])
   let current: unknown = error instanceof Error
     ? error.cause
     : undefined
 
   while (current instanceof Error && !seen.has(current)) {
     seen.add(current)
-    const name = current.name || 'Error'
-    if (!current.message) {
-      causeLines.push(`Caused by: ${name}`)
-    }
-    // A wrapper that copies or quotes the message of its cause would otherwise print it twice.
-    else if (!printedText.includes(current.message)) {
-      causeLines.push(`Caused by: ${name}: ${current.message}`)
-      printedText += `\n${current.message}`
-    }
+    causes.push(current)
     current = current.cause
   }
 
-  return causeLines.join('\n')
+  return causes
 }

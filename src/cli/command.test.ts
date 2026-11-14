@@ -80,6 +80,16 @@ describe('error reporting', () => {
     expect(stderr).toMatch(STACK_FRAME)
   })
 
+  it('adds the stacks of the causes to a CliError with --verbose', async () => {
+    const error = new CliError('Configuration file failed to load', {
+      cause: new Error('Cannot find module'),
+    })
+
+    const { stderr } = await reportFor(error, ['--verbose'])
+
+    expect(stderr).toMatch(/Caused by: Error: Cannot find module\n {4}at /)
+  })
+
   it('omits the stack of an ArgumentError even with --verbose', async () => {
     const { stderr } = await runCli(['build', '--verbose'])
 
