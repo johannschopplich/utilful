@@ -14,7 +14,7 @@ export interface ReducedBlobOptions {
    */
   type?: ReducedBlobType
   /**
-   * Encoder quality between 0 and 1, applied to JPEG and WebP.
+   * Encoder quality between 0 and 1, applied to JPEG and WebP. Setting it re-encodes a JPEG or WebP that already fits.
    * @default 0.85
    */
   quality?: number
@@ -43,12 +43,16 @@ const DEFAULT_QUALITY = 0.85
  * Returns the original blob if nothing needs to change. Browser-only.
  */
 export async function toReducedBlob(blob: Blob, options: ReducedBlobOptions = {}): Promise<Blob> {
-  const { maxDimension, type, quality = DEFAULT_QUALITY, stripMetadata = false } = options
-
-  if (!maxDimension && !type && !stripMetadata)
-    return blob
+  const { maxDimension, type, quality, stripMetadata = false } = options
 
   const outputType = type ?? (isReducedBlobType(blob.type) ? blob.type : 'image/jpeg')
+  // An untyped blob counts as no type change, since only decoding tells its format.
+  const isTypeChange = type !== undefined ? type !== blob.type : blob.type !== '' && !isReducedBlobType(blob.type)
+  const shouldReencode = isTypeChange || (quality !== undefined && outputType !== 'image/png') || stripMetadata
+
+  if (!maxDimension && !shouldReencode)
+    return blob
+
   // Detects the format from the bytes, whatever `blob.type` says, and rejects anything else
   const source = await createImageBitmap(blob)
   let resized: ImageBitmap | undefined
@@ -57,7 +61,7 @@ export async function toReducedBlob(blob: Blob, options: ReducedBlobOptions = {}
     const size = getReducedSize(source, maxDimension)
     const isResized = size.width !== source.width || size.height !== source.height
 
-    if (!isResized && outputType === blob.type && !stripMetadata)
+    if (!isResized && !shouldReencode)
       return blob
 
     if (isResized) {
@@ -70,7 +74,7 @@ export async function toReducedBlob(blob: Blob, options: ReducedBlobOptions = {}
     }
 
     // Encoders ignore `quality` for PNG
-    return await encodeBitmap(resized ?? source, outputType, quality)
+    return await encodeBitmap(resized ?? source, outputType, quality ?? DEFAULT_QUALITY)
   }
   finally {
     source.close()

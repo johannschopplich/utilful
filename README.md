@@ -445,7 +445,7 @@ interface ReducedBlobOptions {
    */
   type?: ReducedBlobType
   /**
-   * Encoder quality between 0 and 1, applied to JPEG and WebP.
+   * Encoder quality between 0 and 1, applied to JPEG and WebP. Setting it re-encodes a JPEG or WebP that already fits.
    * @default 0.85
    */
   quality?: number
@@ -459,7 +459,7 @@ interface ReducedBlobOptions {
 declare function toReducedBlob(blob: Blob, options?: ReducedBlobOptions): Promise<Blob>
 ```
 
-The original blob comes back untouched when the image already fits, the output type matches the source type, and `stripMetadata` is off. Anything else is re-encoded:
+The original blob comes back untouched when the image already fits, the output type matches the source type, `quality` is not passed for JPEG or WebP output, and `stripMetadata` is off. An untyped blob counts as matching unless `type` is passed. Anything else is re-encoded:
 
 - Any other source type, like HEIC or GIF, becomes JPEG. Animation is lost and transparent pixels turn black – pass `type: 'image/png'` to keep transparency.
 - The function throws if the browser cannot encode the output type, rather than silently returning PNG. Safari cannot encode WebP, which includes a WebP source without an explicit `type`.
