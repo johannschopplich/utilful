@@ -6,6 +6,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import process from 'node:process'
 import { Readable } from 'node:stream'
+import { format } from 'node:util'
 import { afterEach, onTestFinished, vi } from 'vitest'
 import { runMain } from './command'
 
@@ -62,12 +63,12 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
         stderr.push(String(chunk))
         return true
       })
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation((...parts: unknown[]) => {
-        stdout.push(`${parts.map(String).join(' ')}\n`)
-      })
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((...parts: unknown[]) => {
-        stderr.push(`${parts.map(String).join(' ')}\n`)
-      })
+      // Node's mapping of these methods onto the two streams.
+      const consoleSpies = ([['log', stdout], ['info', stdout], ['debug', stdout], ['warn', stderr], ['error', stderr]] as const).map(([method, chunks]) =>
+        vi.spyOn(console, method).mockImplementation((...parts: unknown[]) => {
+          chunks.push(`${format(...parts)}\n`)
+        }),
+      )
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code) => {
         throw new ProcessExitError(typeof code === 'number' ? code : 0)
       })
@@ -93,8 +94,8 @@ export function createCliHarness<T extends ArgsDef>(command: CommandDef<T>, { en
         setEnv(previousEnv)
         process.exitCode = previousExitCode
         exitSpy.mockRestore()
-        consoleErrorSpy.mockRestore()
-        consoleLogSpy.mockRestore()
+        for (const spy of consoleSpies)
+          spy.mockRestore()
         stderrSpy.mockRestore()
         stdoutSpy.mockRestore()
       }

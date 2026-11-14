@@ -42,6 +42,29 @@ describe('mockStdin', () => {
   })
 })
 
+describe('runCli', () => {
+  it('captures console.info on stdout and console.warn on stderr', async () => {
+    const { runCli } = createCliHarness(defineCommand({
+      run() {
+        console.info('informed')
+        console.warn('warned')
+      },
+    }))
+
+    expect(await runCli([])).toMatchObject({ stdout: 'informed\n', stderr: 'warned\n' })
+  })
+
+  it('formats console.debug arguments onto stdout', async () => {
+    const { runCli } = createCliHarness(defineCommand({
+      run() {
+        console.debug('%s items', 3)
+      },
+    }))
+
+    expect((await runCli([])).stdout).toBe('3 items\n')
+  })
+})
+
 describe('env', () => {
   const createDirectory = useTemporaryDirectories()
   const printEnv = defineCommand({
