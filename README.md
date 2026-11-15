@@ -237,6 +237,7 @@ declare function parseCSV<Header extends string>(
 The parser accepts a few lenient deviations from RFC 4180:
 
 - LF, CR, and CRLF line endings are all recognized
+- blank lines after the header row are skipped, while a line holding only `""` is a row with one empty field
 - whitespace between a closing quote and the next delimiter or line break is ignored
 - quotes inside unquoted fields are kept as literal characters, since a field only counts as quoted if it starts with a quote
 - text following a closing quote is appended to the field rather than rejected, so `"ab" cd` parses as `abcd`

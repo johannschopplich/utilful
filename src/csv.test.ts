@@ -159,6 +159,12 @@ describe('createCSV', () => {
     expect(result).toBe('name,age\nJohn,\n,25\n,40\nJane,')
   })
 
+  it('writes a lone empty field as ""', () => {
+    expect(createCSV([
+      { note: '' },
+    ], ['note'])).toBe('note\n""')
+  })
+
   it('omits properties not listed in columns', () => {
     const data = [
       {
@@ -346,6 +352,14 @@ describe('parseCSV', () => {
     ])
   })
 
+  it('parses a lone "" as a row with an empty field', () => {
+    expect(parseCSV('note\n""\n\nx\n""')).toEqual([
+      { note: '' },
+      { note: 'x' },
+      { note: '' },
+    ])
+  })
+
   it('preserves whitespace around unquoted values by default', () => {
     const csv = 'name,age\n John , 30 \n Jane, 25'
     expect(parseCSV(csv)).toEqual([
@@ -407,6 +421,7 @@ describe('parseCSV', () => {
     ['consecutive delimiters', 'name,age,,city\nJohn,30,,New York'],
     ['a trailing delimiter', 'name,age,\nJohn,30,value'],
     ['a delimiter after a byte order mark', '\uFEFF,age\nJohn,30'],
+    ['a lone quoted empty header', '""'],
   ])('throws SyntaxError for an empty column name from %s', (_label, csv) => {
     expect(() => parseCSV(csv)).toThrow(SyntaxError)
     expect(() => parseCSV(csv)).toThrow(/CSV header row contains empty column name/)

@@ -241,9 +241,14 @@ function encodeCSVRow<T extends Record<string, unknown>>(
   delimiter: string,
   quoteAll: boolean,
 ): string {
-  return columns
+  const line = columns
     .map(key => escapeCSVValue(row[key], { delimiter, quoteAll }))
     .join(delimiter)
+
+  // A lone empty field is quoted so that it does not read as a blank line.
+  return columns.length === 1 && line === ''
+    ? `${DOUBLE_QUOTE}${DOUBLE_QUOTE}`
+    : line
 }
 
 // #endregion
@@ -367,7 +372,7 @@ class CSVParserCore<Header extends string> {
       )
     }
 
-    if (this.currentField !== '' || this.currentRow.length > 0) {
+    if (this.currentField !== '' || this.currentRow.length > 0 || this.isFieldQuoted) {
       this.appendRow()
     }
   }
@@ -430,10 +435,11 @@ class CSVParserCore<Header extends string> {
   }
 
   private appendRow(): void {
+    const isLastFieldQuoted = this.isFieldQuoted
     this.appendField()
 
     if (this.headers) {
-      this.processDataRow(this.currentRow, this.headers)
+      this.processDataRow(this.currentRow, this.headers, isLastFieldQuoted)
     }
     else {
       this.processHeaderRow(this.currentRow)
@@ -473,9 +479,9 @@ class CSVParserCore<Header extends string> {
     this.headers = headers as Header[]
   }
 
-  private processDataRow(fieldValues: string[], headers: Header[]): void {
-    // Skip blank rows.
-    if (fieldValues.length === 1 && fieldValues[0]!.length === 0) {
+  private processDataRow(fieldValues: string[], headers: Header[], isLastFieldQuoted: boolean): void {
+    // Skip blank lines.
+    if (fieldValues.length === 1 && fieldValues[0]!.length === 0 && !isLastFieldQuoted) {
       return
     }
 
@@ -512,6 +518,8 @@ class CSVParserCore<Header extends string> {
  *
  * Parsing tolerances (lenient deviations from RFC 4180):
  * - LF, CR, and CRLF line endings are all accepted.
+ * - Blank lines after the header row are skipped, while a line holding only `""`
+ *   is a row with one empty field.
  * - Whitespace between a closing quote and the next delimiter or line break is ignored.
  * - A field is only treated as quoted if it starts with a quote; quotes inside
  *   unquoted fields are kept as literal characters.
