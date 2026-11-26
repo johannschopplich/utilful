@@ -92,9 +92,6 @@
   "files": [
     "dist"
   ],
-  "engines": {
-    "node": ">=24"
-  },
   "scripts": {
     "build": "tsdown",
     "lint": "eslint .",
